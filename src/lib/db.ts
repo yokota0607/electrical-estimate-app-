@@ -1,8 +1,12 @@
 import { neon } from '@neondatabase/serverless'
 
-const url = process.env.DATABASE_URL || process.env.POSTGRES_URL
-if (!url) throw new Error('DATABASE_URL or POSTGRES_URL environment variable is required')
+// Lazy initialization: don't throw at module load time (causes Vercel build failure)
+// The error will surface at query time if DATABASE_URL is missing
+const getUrl = () =>
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  'postgresql://placeholder:placeholder@placeholder.neon.tech/neondb'
 
-const sql = neon(url)
+const sql = neon(getUrl())
 
 export default sql
