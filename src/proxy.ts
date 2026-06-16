@@ -39,7 +39,8 @@ export async function proxy(req: NextRequest) {
 
   const isLoginPage = pathname === '/login'
   const isAuthApi = pathname.startsWith('/api/auth/')
-  const isPublic = isLoginPage || isAuthApi
+  const isDbInit = pathname === '/api/db-init'
+  const isPublic = isLoginPage || isAuthApi || isDbInit
 
   const token = req.cookies.get('session')?.value
   const authenticated = token ? await verifyToken(token) : false
