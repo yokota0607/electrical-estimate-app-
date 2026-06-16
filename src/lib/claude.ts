@@ -1,8 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+// Lazy initialization: new Anthropic() throws at construction time if
+// ANTHROPIC_API_KEY is undefined — crashing the Next.js build worker.
+// By deferring to first use, the build phase safely imports this module.
+let _client: Anthropic | undefined
+
+function getClient(): Anthropic {
+  if (!_client) {
+    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  }
+  return _client
+}
 
 export interface ExtractedConstructionInfo {
   project_name: string
@@ -56,7 +64,7 @@ export async function analyzeEstimateDocument(
           source: { type: 'base64', media_type: mediaType, data: fileBase64 },
         } as { type: 'image'; source: { type: 'base64'; media_type: Exclude<EstimateDocMediaType, 'application/pdf'>; data: string } })
 
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     messages: [
@@ -170,7 +178,7 @@ export async function analyzeBusinessCardScan(
   imageBase64: string,
   mediaType: 'image/jpeg' | 'image/png' | 'image/webp',
 ): Promise<ExtractedBusinessCard[]> {
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     messages: [
@@ -198,7 +206,7 @@ export async function analyzeBusinessCardScan(
 }
 
 export async function analyzePDF(pdfBase64: string): Promise<ExtractionResult> {
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 4096,
     messages: [
