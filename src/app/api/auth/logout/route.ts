@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { parseToken } from '@/lib/auth'
-import db from '@/lib/db'
+import sql from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,9 +11,7 @@ export async function POST(request: NextRequest) {
       const user = await parseToken(token)
       if (user) {
         const ip = request.headers.get('x-forwarded-for') || ''
-        db.prepare('INSERT INTO login_logs (user_id, username, action, ip_address) VALUES (?,?,?,?)').run(
-          user.userId, user.username, 'logout', ip
-        )
+        await sql`INSERT INTO login_logs (user_id, username, action, ip_address) VALUES (${user.userId}, ${user.username}, 'logout', ${ip})`
       }
     }
     cookieStore.delete('session')
