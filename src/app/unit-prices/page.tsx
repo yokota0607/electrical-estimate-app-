@@ -192,36 +192,38 @@ export default function UnitPricesPage() {
   )
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">単価表管理</h2>
-          <p className="text-gray-500 text-sm mt-1">全{prices.length}件の材料単価</p>
-        </div>
-        <div className="flex gap-2">
-          {prices.length === 0 && (
-            <button onClick={loadSamples} disabled={importLoading}
-              className="btn-secondary flex items-center gap-2 text-sm">
-              <Upload className="h-4 w-4" />サンプルデータ読込
+    <div className="p-4 sm:p-8">
+      <div className="mb-5 sm:mb-6">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">単価表管理</h2>
+            <p className="text-gray-500 text-sm mt-1">全{prices.length}件の材料単価</p>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-end">
+            {prices.length === 0 && (
+              <button onClick={loadSamples} disabled={importLoading}
+                className="btn-secondary flex items-center gap-1.5 text-sm px-3">
+                <Upload className="h-4 w-4" /><span className="hidden sm:inline">サンプルデータ読込</span><span className="sm:hidden">サンプル</span>
+              </button>
+            )}
+            <button onClick={exportCSV} className="btn-secondary flex items-center gap-1.5 text-sm px-3">
+              <Download className="h-4 w-4" /><span className="hidden sm:inline">CSV出力</span><span className="sm:hidden">CSV</span>
             </button>
-          )}
-          <button onClick={exportCSV} className="btn-secondary flex items-center gap-2 text-sm">
-            <Download className="h-4 w-4" />CSV出力
-          </button>
-          <button onClick={startNew} className="btn-primary flex items-center gap-2 text-sm">
-            <Plus className="h-4 w-4" />新規登録
-          </button>
+            <button onClick={startNew} className="btn-primary flex items-center gap-1.5 text-sm px-3">
+              <Plus className="h-4 w-4" />新規登録
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-5 sm:mb-6">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input className="input pl-9" placeholder="材料名・仕入先で検索"
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="input w-48" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+        <select className="input sm:w-48" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
           <option value="all">すべてのカテゴリ</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>

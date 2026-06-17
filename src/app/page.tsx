@@ -76,14 +76,14 @@ export default function Dashboard() {
   const recentEstimates = estimates.slice(0, 5)
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">ダッシュボード</h2>
+    <div className="p-4 sm:p-8">
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">ダッシュボード</h2>
         <p className="text-gray-500 text-sm mt-1">電気工事見積もり管理システム</p>
       </div>
 
       {/* 工事台帳 stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="card p-4 flex items-center gap-3">
           <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
             <HardHat className="h-4 w-4 text-blue-600" />
@@ -114,48 +114,48 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-500 text-sm font-medium">見積もり件数</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FileText className="h-5 w-5 text-blue-600" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="card p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <span className="text-gray-500 text-xs sm:text-sm font-medium">見積もり件数</span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{estimates.length}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{estimates.length}</p>
           <p className="text-gray-400 text-xs mt-1">承認済み {approvedCount}件</p>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-500 text-sm font-medium">登録単価</span>
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <Tag className="h-5 w-5 text-green-600" />
+        <div className="card p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <span className="text-gray-500 text-xs sm:text-sm font-medium">登録単価</span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <Tag className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{unitPriceCount}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{unitPriceCount}</p>
           <p className="text-gray-400 text-xs mt-1">材料・資材</p>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-500 text-sm font-medium">工事台帳</span>
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <HardHat className="h-5 w-5 text-orange-600" />
+        <div className="card p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <span className="text-gray-500 text-xs sm:text-sm font-medium">工事台帳</span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <HardHat className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{ledger.count}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{ledger.count}</p>
           <p className="text-gray-400 text-xs mt-1">未入金 {ledger.unpaidCount}件</p>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-500 text-sm font-medium">工事利益合計</span>
-            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-yellow-600" />
+        <div className="card p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <span className="text-gray-500 text-xs sm:text-sm font-medium">工事利益合計</span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
             </div>
           </div>
-          <p className={`text-xl font-bold ${ledger.totalProfit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+          <p className={`text-base sm:text-xl font-bold ${ledger.totalProfit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
             {formatCurrency(ledger.totalProfit)}
           </p>
           <p className="text-gray-400 text-xs mt-1">台帳ベース</p>
@@ -163,7 +163,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <Link href="/estimates/new"
           className="card p-5 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer group">
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-700 transition-colors">

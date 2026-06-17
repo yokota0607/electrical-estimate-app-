@@ -88,11 +88,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-400">
-            <p className="font-medium text-gray-500 mb-1">初期アカウント</p>
-            <p>社長用: admin / admin1234</p>
-            <p>事務員: staff / staff1234</p>
-          </div>
         </div>
       </div>
     </div>

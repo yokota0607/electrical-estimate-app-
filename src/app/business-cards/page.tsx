@@ -201,7 +201,7 @@ function CardFormFields({ value, onChange, industryPresets }: {
   industryPresets: string[]
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div>
         <label className="label">氏名</label>
         <input className="input" placeholder="山田 太郎" value={value.name}
@@ -563,7 +563,7 @@ export default function BusinessCardsPage() {
 
   // カード行の描画
   const renderRow = (c: BusinessCard) => (
-    <div key={c.id} className="grid grid-cols-12 px-4 py-3 items-start hover:bg-gray-50 transition-colors group">
+    <div key={c.id} className="hidden sm:grid grid-cols-12 px-4 py-3 items-start hover:bg-gray-50 transition-colors group">
       <div className="col-span-3 min-w-0">
         <p className="font-medium text-gray-900 truncate">{c.name || '—'}</p>
         {c.name_kana && <p className="text-xs text-gray-400 truncate">{c.name_kana}</p>}
@@ -637,8 +637,47 @@ export default function BusinessCardsPage() {
     </div>
   )
 
+  // モバイル用カード行
+  const renderMobileRow = (c: BusinessCard) => (
+    <div key={`m-${c.id}`} className="sm:hidden flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-medium text-gray-900 truncate text-sm">{c.name || '—'}</p>
+            {c.company && <p className="text-xs text-gray-500 truncate flex items-center gap-1 mt-0.5">
+              <Building2 className="h-3 w-3 flex-shrink-0" />{c.company}
+            </p>}
+            {c.title && <p className="text-xs text-gray-400 truncate">{c.title}</p>}
+          </div>
+          <div className="flex gap-1 flex-shrink-0">
+            <button onClick={() => startEdit(c)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded">
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button onClick={() => handleDelete(c.id, c.name)} className="p-1.5 text-gray-400 hover:text-red-600 rounded">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          {c.transaction_type && (
+            <span className={`text-xs px-1.5 py-0.5 rounded border ${TX_COLOR[c.transaction_type] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              {c.transaction_type}
+            </span>
+          )}
+          {Array.isArray(c.industry) && c.industry.slice(0, 2).map((ind, i) => (
+            <span key={i} className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded border border-green-100">{ind}</span>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-gray-500">
+          {c.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{c.phone}</span>}
+          {c.email && <span className="flex items-center gap-1 truncate max-w-[160px]"><Mail className="h-3 w-3 flex-shrink-0" />{c.email}</span>}
+        </div>
+      </div>
+    </div>
+  )
+
   const tableHeader = (
-    <div className="grid grid-cols-12 px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide border-b border-gray-100">
+    <div className="hidden sm:grid grid-cols-12 px-4 py-3 text-xs text-gray-400 font-medium uppercase tracking-wide border-b border-gray-100">
       <div className="col-span-3">氏名 / 役職 / 取引区分</div>
       <div className="col-span-3">会社名 / 部署</div>
       <div className="col-span-2">電話番号</div>
@@ -650,35 +689,14 @@ export default function BusinessCardsPage() {
   const activeFilterCount = [industryFilter, txFilter, qualFilter].filter(Boolean).length
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">名刺管理</h2>
-          <p className="text-gray-500 text-sm mt-1">全{cards.length}件</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => { setPanel(panel === 'csv' ? null : 'csv'); setCsvFile(null); setCsvRows([]); setCsvError(''); setCsvIndustry('') }}
-            className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
-              panel === 'csv' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
-            }`}>
-            <FileText className="h-4 w-4" />CSVインポート
-            {panel === 'csv' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </button>
-          <button onClick={() => togglePanel('scan')}
-            className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
-              panel === 'scan' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-            }`}>
-            <ScanLine className="h-4 w-4" />AIスキャン読み取り
-            {panel === 'scan' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </button>
-          <button onClick={() => togglePanel('manual')}
-            className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
-              panel === 'manual' ? 'bg-blue-600 text-white' : 'btn-primary'
-            }`}>
-            <Plus className="h-4 w-4" />手動入力
-            {panel === 'manual' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </button>
+      <div className="mb-5 sm:mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">名刺管理</h2>
+            <p className="text-gray-500 text-sm mt-1">全{cards.length}件</p>
+          </div>
           <button
             onClick={() => setPanel(panel === 'industry-settings' ? null : 'industry-settings')}
             title="業種管理"
@@ -688,6 +706,29 @@ export default function BusinessCardsPage() {
                 : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500 hover:text-gray-700'
             }`}>
             <Settings className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => { setPanel(panel === 'csv' ? null : 'csv'); setCsvFile(null); setCsvRows([]); setCsvError(''); setCsvIndustry('') }}
+            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${
+              panel === 'csv' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
+            }`}>
+            <FileText className="h-4 w-4" /><span className="hidden xs:inline">CSVインポート</span><span className="xs:hidden">CSV</span>
+            {panel === 'csv' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          <button onClick={() => togglePanel('scan')}
+            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${
+              panel === 'scan' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+            }`}>
+            <ScanLine className="h-4 w-4" /><span className="hidden sm:inline">AIスキャン読み取り</span><span className="sm:hidden">AIスキャン</span>
+            {panel === 'scan' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          <button onClick={() => togglePanel('manual')}
+            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${
+              panel === 'manual' ? 'bg-blue-600 text-white' : 'btn-primary'
+            }`}>
+            <Plus className="h-4 w-4" />手動入力
+            {panel === 'manual' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
         </div>
       </div>
@@ -1134,7 +1175,12 @@ export default function BusinessCardsPage() {
                 </div>
                 <div className="divide-y divide-gray-50">
                   {tableHeader}
-                  {items.map(c => renderRow(c))}
+                  {items.map(c => (
+                    <div key={c.id}>
+                      {renderRow(c)}
+                      {renderMobileRow(c)}
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -1142,7 +1188,12 @@ export default function BusinessCardsPage() {
         ) : (
           <div className="divide-y divide-gray-50">
             {tableHeader}
-            {filtered.map(c => renderRow(c))}
+            {filtered.map(c => (
+              <div key={c.id}>
+                {renderRow(c)}
+                {renderMobileRow(c)}
+              </div>
+            ))}
           </div>
         )}
       </div>

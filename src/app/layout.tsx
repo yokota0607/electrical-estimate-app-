@@ -21,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${inter.className} bg-gray-50`}>
         <div className="flex min-h-screen">
           {showNav && <Navigation />}
-          <main className="flex-1 overflow-auto">
+          <main className={`flex-1 overflow-auto${showNav ? ' pt-14 lg:pt-0' : ''}`}>
             {children}
           </main>
         </div>

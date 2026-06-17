@@ -84,14 +84,14 @@ export default function ConstructionLedgerPage() {
   const completedThisMonth = rows.filter(r => r.status === '完了' && r.completion_date?.startsWith(thisMonth)).length
 
   return (
-    <div className="p-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-8">
+      <div className="mb-5 sm:mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">工事台帳</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">工事台帳</h2>
           <p className="text-gray-500 text-sm mt-1">工事の受注・原価・入金を一元管理</p>
         </div>
-        <Link href="/construction-ledger/new" className="btn-primary flex items-center gap-2">
-          <Plus className="h-4 w-4" />新規登録
+        <Link href="/construction-ledger/new" className="btn-primary flex items-center gap-1.5 text-sm sm:text-base px-3 sm:px-4">
+          <Plus className="h-4 w-4" /><span className="hidden sm:inline">新規登録</span><span className="sm:hidden">新規</span>
         </Link>
       </div>
 
