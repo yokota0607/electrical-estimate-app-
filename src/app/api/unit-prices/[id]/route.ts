@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
 
@@ -9,12 +9,22 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, category, unit, price, supplier, notes } = body
+    const { name, category, unit, price, supplier, notes, part_number, maker, quantity_per_pack, order_supplier, nicknames } = body
 
     const [row] = await sql`
       UPDATE unit_prices
-      SET name = ${name}, category = ${category}, unit = ${unit}, price = ${Number(price)},
-          supplier = ${supplier || ''}, notes = ${notes || ''}, updated_at = NOW()
+      SET name = ${name},
+          category = ${category},
+          unit = ${unit},
+          price = ${Number(price)},
+          supplier = ${supplier || ''},
+          notes = ${notes || ''},
+          part_number = ${part_number || ''},
+          maker = ${maker || ''},
+          quantity_per_pack = ${quantity_per_pack || ''},
+          order_supplier = ${order_supplier || 'たけでん'},
+          nicknames = ${JSON.stringify(Array.isArray(nicknames) ? nicknames : [])},
+          updated_at = NOW()
       WHERE id = ${id}
       RETURNING *
     `

@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import sql from '@/lib/db'
 import { scryptSync, randomBytes } from 'crypto'
@@ -23,6 +23,13 @@ export async function POST() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `
+    // Add new columns to unit_prices if not exists
+    await sql`ALTER TABLE unit_prices ADD COLUMN IF NOT EXISTS part_number TEXT DEFAULT ''`
+    await sql`ALTER TABLE unit_prices ADD COLUMN IF NOT EXISTS maker TEXT DEFAULT ''`
+    await sql`ALTER TABLE unit_prices ADD COLUMN IF NOT EXISTS quantity_per_pack TEXT DEFAULT ''`
+    await sql`ALTER TABLE unit_prices ADD COLUMN IF NOT EXISTS order_supplier TEXT DEFAULT 'たけでん'`
+    await sql`ALTER TABLE unit_prices ADD COLUMN IF NOT EXISTS nicknames TEXT DEFAULT '[]'`
+
     await sql`
       CREATE TABLE IF NOT EXISTS estimates (
         id SERIAL PRIMARY KEY,
@@ -185,6 +192,41 @@ export async function POST() {
         is_completed INTEGER DEFAULT 0,
         sort_order INTEGER DEFAULT 0,
         created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+
+    // 発注管理テーブル
+    await sql`
+      CREATE TABLE IF NOT EXISTS purchase_orders (
+        id SERIAL PRIMARY KEY,
+        order_number TEXT DEFAULT '',
+        order_date TEXT DEFAULT '',
+        supplier TEXT DEFAULT 'たけでん',
+        delivery_destination TEXT DEFAULT '',
+        ledger_id INTEGER REFERENCES construction_ledger(id) ON DELETE SET NULL,
+        project_name TEXT DEFAULT '',
+        delivery_date TEXT DEFAULT '',
+        is_received INTEGER DEFAULT 0,
+        received_at TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        total_amount REAL DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
+      CREATE TABLE IF NOT EXISTS purchase_order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+        unit_price_id INTEGER DEFAULT NULL,
+        part_number TEXT DEFAULT '',
+        name TEXT NOT NULL DEFAULT '',
+        maker TEXT DEFAULT '',
+        unit TEXT DEFAULT '個',
+        quantity REAL DEFAULT 1,
+        unit_price REAL DEFAULT 0,
+        amount REAL DEFAULT 0,
+        sort_order INTEGER DEFAULT 0
       )
     `
 

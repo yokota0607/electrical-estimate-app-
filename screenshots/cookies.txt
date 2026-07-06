@@ -1,0 +1,2 @@
+# Netscape HTTP Cookie File
+localhost	FALSE	/	FALSE	0	session	eyJ1c2VySWQiOjIsInVzZXJuYW1lIjoiYWRtaW4iLCJkaXNwbGF5TmFtZSI6IuekvumVtyIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc4MTIzNzkxOTcxOX0.rPdhyd870kjCCBiM0XEMC1LoUM-B4RBjoYh2jrKM6_Q

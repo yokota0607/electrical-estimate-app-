@@ -1,7 +1,8 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
-import { del } from '@vercel/blob'
+import path from 'path'
+import fs from 'fs/promises'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string; fid: string }> }) {
   try {
@@ -24,7 +25,22 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
     if (rows.length > 0) {
       const row = rows[0] as { stored_name: string }
-      try { await del(row.stored_name) } catch { /* ignore blob delete errors */ }
+      const storedName = row.stored_name
+
+      if (storedName.startsWith('http')) {
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          try {
+            const { del } = await import('@vercel/blob')
+            await del(storedName)
+          } catch { /* ignore blob delete errors */ }
+        }
+      } else {
+        try {
+          const localPath = path.join(process.cwd(), 'public', storedName)
+          await fs.unlink(localPath)
+        } catch { /* ignore local delete errors */ }
+      }
+
       await sql`DELETE FROM construction_files WHERE id = ${Number(fid)}`
     }
     return NextResponse.json({ ok: true })

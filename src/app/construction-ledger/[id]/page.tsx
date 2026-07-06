@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Save, Trash2, Loader2, CheckCircle, Link2, Edit2, Plus, X, Banknote,
-  Paperclip, Download, FileText, Image as ImageIcon, File, Building2, ClipboardList
+  Paperclip, Download, FileText, Image as ImageIcon, File, Building2, ClipboardList, ShoppingCart, ChevronRight
 } from 'lucide-react'
 import CurrencyInput from '@/components/CurrencyInput'
 
@@ -97,6 +97,16 @@ interface Estimate {
   tax_rate: number
 }
 
+interface PurchaseOrderSummary {
+  id: number
+  order_number: string
+  order_date: string
+  supplier: string
+  delivery_date: string
+  is_received: number
+  total_amount: number
+}
+
 const PAYMENT_STATUSES = ['未入金', '一部入金', '入金済み']
 const WORK_STATUSES = ['未着工', '着工中', '完成未請求', '請求済未入金', '完了']
 const PAYMENT_TYPES = ['着手金', '中間金', '出来高', '完成金', 'その他']
@@ -172,9 +182,17 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
   const [savingProcess, setSavingProcess] = useState(false)
   const [newProcess, setNewProcess] = useState({ name: '', weight: '' })
 
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderSummary[]>([])
+  const [showOrderForm, setShowOrderForm] = useState(false)
+
   const loadProcesses = async () => {
     const res = await fetch(`/api/construction-ledger/${id}/processes`)
     if (res.ok) setProcesses(await res.json())
+  }
+
+  const loadPurchaseOrders = async () => {
+    const res = await fetch(`/api/purchase-orders?ledger_id=${id}`)
+    if (res.ok) setPurchaseOrders(await res.json())
   }
 
   const load = async () => {
@@ -198,6 +216,7 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
     loadFiles()
     loadSubPayments()
     loadProcesses()
+    loadPurchaseOrders()
     fetch('/api/estimates').then(r => r.json()).then(d => setEstimates(Array.isArray(d) ? d : []))
   }, [id])
 
@@ -491,8 +510,14 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
         <h3 className="font-semibold text-gray-900 text-sm mb-4">金額情報</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
           <div>
-            <label className="label">契約金額（円）</label>
+            <label className="label">契約金額（税抜）</label>
             <CurrencyInput className="input text-right" value={form.contract_amount ?? 0} onChange={v => set('contract_amount', v)} />
+          </div>
+          <div>
+            <label className="label">税込総額（消費税10%）</label>
+            <div className="input text-right bg-gray-50 text-gray-700 font-semibold cursor-default select-none">
+              {formatCurrency(Math.round((Number(form.contract_amount) || 0) * 1.1))}
+            </div>
           </div>
           <div>
             <label className="label">総額（円）</label>
@@ -523,7 +548,7 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
         {/* 利益サマリー */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg text-sm">
           <div className="text-center">
-            <p className="text-gray-500 text-xs mb-1">契約金額</p>
+            <p className="text-gray-500 text-xs mb-1">契約金額（税抜）</p>
             <p className="font-semibold text-gray-900">{formatCurrency(Number(form.contract_amount) || 0)}</p>
           </div>
           <div className="text-center">
@@ -1037,6 +1062,64 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
               className="w-full text-xs text-gray-400 hover:text-purple-600 text-center py-2 border border-dashed border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
               + さらに追加
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* 発注履歴 */}
+      <div className="card p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4 text-blue-500" />
+            <h3 className="font-semibold text-gray-900 text-sm">発注履歴</h3>
+            {purchaseOrders.length > 0 && (
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{purchaseOrders.length}件</span>
+            )}
+          </div>
+          <Link href={`/unit-prices?ledger_id=${id}&project=${encodeURIComponent(data.project_name)}`}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-300 hover:border-blue-500 px-2.5 py-1 rounded-lg transition-colors">
+            <Plus className="h-3.5 w-3.5" />新規発注
+          </Link>
+        </div>
+        {purchaseOrders.length === 0 ? (
+          <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center text-gray-400 text-sm">
+            <ShoppingCart className="h-6 w-6 mx-auto mb-2 opacity-30" />
+            <p>発注履歴がありません</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {purchaseOrders.map(o => {
+              const today = new Date().toISOString().slice(0, 10)
+              let statusLabel = '待機中'
+              let statusColor = 'bg-gray-100 text-gray-600'
+              if (o.is_received) { statusLabel = '入荷済み'; statusColor = 'bg-green-100 text-green-700' }
+              else if (o.delivery_date && o.delivery_date < today) { statusLabel = '納期遅れ'; statusColor = 'bg-red-100 text-red-700' }
+              else if (o.delivery_date) { statusLabel = '待機中'; statusColor = 'bg-gray-100 text-gray-600' }
+              return (
+                <Link key={o.id} href={`/purchase-orders/${o.id}`}
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-gray-500">{o.order_number}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {o.order_date} / {o.supplier}
+                      {o.delivery_date && <span className="ml-2">納品予定: {o.delivery_date}</span>}
+                    </div>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900 flex-shrink-0">
+                    {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(o.total_amount || 0)}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                </Link>
+              )
+            })}
+            <div className="text-right text-sm font-semibold text-gray-700 pt-1">
+              発注合計: {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(
+                purchaseOrders.reduce((s, o) => s + (o.total_amount || 0), 0)
+              )}
+            </div>
           </div>
         )}
       </div>

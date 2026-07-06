@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { FileText, Tag, TrendingUp, Plus, ChevronRight, Clock, CheckCircle, FileEdit, BookOpen, HardHat, Banknote, Calendar } from 'lucide-react'
+import { FileText, Tag, TrendingUp, Plus, ChevronRight, Clock, CheckCircle, FileEdit, BookOpen, HardHat, Banknote, Calendar, ShoppingCart, AlertTriangle, Package } from 'lucide-react'
 
 interface Estimate {
   id: number
@@ -26,6 +26,16 @@ interface LedgerSummary {
   completedThisMonth: number
 }
 
+interface DeliveryOrder {
+  id: number
+  order_number: string
+  supplier: string
+  delivery_date: string
+  project_name: string
+  ledger_project_name: string | null
+  total_amount: number
+}
+
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   draft: { label: '下書き', color: 'bg-gray-100 text-gray-600' },
   completed: { label: '完成', color: 'bg-blue-100 text-blue-700' },
@@ -42,8 +52,13 @@ export default function Dashboard() {
   const [unitPriceCount, setUnitPriceCount] = useState(0)
   const [ledger, setLedger] = useState<LedgerSummary>({ count: 0, totalContract: 0, totalProfit: 0, unpaidCount: 0, inProgressCount: 0, totalUnpaid: 0, completedThisMonth: 0 })
   const [loading, setLoading] = useState(true)
+  const [deliveryStatus, setDeliveryStatus] = useState<{ today: DeliveryOrder[]; tomorrow: DeliveryOrder[]; overdue: DeliveryOrder[] }>({ today: [], tomorrow: [], overdue: [] })
 
   useEffect(() => {
+    fetch('/api/purchase-orders/delivery-status').then(r => r.json()).then(d => {
+      if (d && !d.error) setDeliveryStatus(d)
+    }).catch(() => {})
+
     Promise.all([
       fetch('/api/estimates').then(r => r.json()),
       fetch('/api/unit-prices').then(r => r.json()),
@@ -161,6 +176,60 @@ export default function Dashboard() {
           <p className="text-gray-400 text-xs mt-1">台帳ベース</p>
         </div>
       </div>
+
+      {/* 納期管理ウィジェット */}
+      {(deliveryStatus.today.length > 0 || deliveryStatus.tomorrow.length > 0 || deliveryStatus.overdue.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          {deliveryStatus.overdue.length > 0 && (
+            <div className="card p-4 border-l-4 border-red-400">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+                <span className="font-semibold text-red-700 text-sm">納期遅れ ({deliveryStatus.overdue.length}件)</span>
+              </div>
+              <div className="space-y-1.5">
+                {deliveryStatus.overdue.slice(0, 3).map(o => (
+                  <Link key={o.id} href={`/purchase-orders/${o.id}`} className="block text-xs text-gray-600 hover:text-red-600 truncate">
+                    {o.delivery_date} {o.project_name || o.ledger_project_name || o.supplier}
+                  </Link>
+                ))}
+                {deliveryStatus.overdue.length > 3 && (
+                  <Link href="/purchase-orders?status=overdue" className="text-xs text-red-500 hover:underline">他{deliveryStatus.overdue.length - 3}件</Link>
+                )}
+              </div>
+            </div>
+          )}
+          {deliveryStatus.today.length > 0 && (
+            <div className="card p-4 border-l-4 border-yellow-400">
+              <div className="flex items-center gap-2 mb-3">
+                <Package className="h-4 w-4 text-yellow-600" />
+                <span className="font-semibold text-yellow-700 text-sm">本日入荷予定 ({deliveryStatus.today.length}件)</span>
+              </div>
+              <div className="space-y-1.5">
+                {deliveryStatus.today.map(o => (
+                  <Link key={o.id} href={`/purchase-orders/${o.id}`} className="block text-xs text-gray-600 hover:text-yellow-600 truncate">
+                    {o.project_name || o.ledger_project_name || o.supplier}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+          {deliveryStatus.tomorrow.length > 0 && (
+            <div className="card p-4 border-l-4 border-blue-400">
+              <div className="flex items-center gap-2 mb-3">
+                <Package className="h-4 w-4 text-blue-500" />
+                <span className="font-semibold text-blue-700 text-sm">明日入荷予定 ({deliveryStatus.tomorrow.length}件)</span>
+              </div>
+              <div className="space-y-1.5">
+                {deliveryStatus.tomorrow.map(o => (
+                  <Link key={o.id} href={`/purchase-orders/${o.id}`} className="block text-xs text-gray-600 hover:text-blue-600 truncate">
+                    {o.project_name || o.ledger_project_name || o.supplier}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">

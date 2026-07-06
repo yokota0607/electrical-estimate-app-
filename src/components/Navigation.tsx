@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, FileText, Tag, History, Zap, BookOpen, CreditCard, LogOut, User, ClipboardList, Menu, X } from 'lucide-react'
+import { LayoutDashboard, FileText, Tag, History, Zap, BookOpen, CreditCard, LogOut, User, ClipboardList, Menu, X, ShoppingCart } from 'lucide-react'
 
 const navItems = [
   { href: '/', label: 'ダッシュボード', icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/estimates', label: '見積もり履歴', icon: History },
   { href: '/construction-ledger', label: '工事台帳', icon: BookOpen },
   { href: '/unit-prices', label: '単価表管理', icon: Tag },
+  { href: '/purchase-orders', label: '発注管理', icon: ShoppingCart },
   { href: '/business-cards', label: '名刺管理', icon: CreditCard },
 ]
 
