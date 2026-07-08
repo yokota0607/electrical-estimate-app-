@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Printer, CheckCircle, Package } from 'lucide-react'
+import { ArrowLeft, Printer, CheckCircle, Package, Trash2 } from 'lucide-react'
 
 interface OrderItem {
   id: number
@@ -48,6 +49,7 @@ function formatCurrency(n: number) {
 
 export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [order, setOrder] = useState<PurchaseOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -75,6 +77,13 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
       })
       load()
     } finally { setSaving(false) }
+  }
+
+  const handleDelete = async () => {
+    if (!order) return
+    if (!confirm(`発注「${order.order_number}」を削除しますか？\nこの操作は元に戻せません。`)) return
+    await fetch(`/api/purchase-orders/${id}`, { method: 'DELETE' })
+    router.push('/purchase-orders')
   }
 
   const printPDF = () => {
@@ -150,6 +159,10 @@ ${order.notes ? `<div style="margin-top:12px;font-size:10pt;color:#555">備考�
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>{status.label}</span>
         <button onClick={printPDF} className="btn-secondary flex items-center gap-1.5 text-sm">
           <Printer className="h-4 w-4" />PDF印刷
+        </button>
+        <button onClick={handleDelete}
+          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 transition-colors">
+          <Trash2 className="h-4 w-4" />削除
         </button>
       </div>
 

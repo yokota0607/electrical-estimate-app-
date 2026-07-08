@@ -65,6 +65,8 @@ interface ConstructionFile {
   mime_type: string
   uploaded_by: string
   created_at: string
+  category: string
+  label: string
 }
 
 interface PaymentHistory {
@@ -105,6 +107,16 @@ interface PurchaseOrderSummary {
   delivery_date: string
   is_received: number
   total_amount: number
+}
+
+const FILE_CATEGORIES = ['図面', '見積書', '契約書', '写真', 'その他']
+const DRAWING_LABELS = ['電気系統図', '配線ルート図', '平面図', '単線結線図', '外線図', '盤結線図']
+const CATEGORY_STYLE: Record<string, string> = {
+  '図面':   'bg-blue-100 text-blue-700',
+  '見積書': 'bg-green-100 text-green-700',
+  '契約書': 'bg-purple-100 text-purple-700',
+  '写真':   'bg-orange-100 text-orange-700',
+  'その他': 'bg-gray-100 text-gray-600',
 }
 
 const PAYMENT_STATUSES = ['未入金', '一部入金', '入金済み']
@@ -166,6 +178,7 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
   const [files, setFiles] = useState<ConstructionFile[]>([])
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [pendingUpload, setPendingUpload] = useState<{ file: File; category: string; label: string } | null>(null)
 
   const [subPayments, setSubPayments] = useState<SubcontractorPayment[]>([])
   const [addingSubPayment, setAddingSubPayment] = useState(false)
@@ -332,19 +345,28 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
     loadProcesses()
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const defaultCategory = file.type.startsWith('image/') ? '写真' : 'その他'
+    setPendingUpload({ file, category: defaultCategory, label: '' })
+    e.target.value = ''
+  }
+
+  const handlePendingUpload = async () => {
+    if (!pendingUpload) return
     setUploadingFile(true)
     try {
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', pendingUpload.file)
+      fd.append('category', pendingUpload.category)
+      fd.append('label', pendingUpload.label)
       const res = await fetch(`/api/construction-ledger/${id}/files`, { method: 'POST', body: fd })
       if (!res.ok) { alert('アップロードに失敗しました'); return }
+      setPendingUpload(null)
       loadFiles()
     } finally {
       setUploadingFile(false)
-      e.target.value = ''
     }
   }
 
@@ -352,12 +374,6 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
     if (!confirm('このファイルを削除しますか？')) return
     await fetch(`/api/construction-ledger/${id}/files/${fid}`, { method: 'DELETE' })
     loadFiles()
-  }
-
-  function fileIcon(mime: string) {
-    if (mime.startsWith('image/')) return <ImageIcon className="h-4 w-4 text-blue-500" />
-    if (mime === 'application/pdf') return <FileText className="h-4 w-4 text-red-500" />
-    return <File className="h-4 w-4 text-gray-400" />
   }
 
   function formatSize(bytes: number) {
@@ -436,12 +452,17 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
           <p className="text-gray-400 text-sm mt-0.5">登録日: {formatDate(data.created_at)}</p>
         </div>
         <div className="flex items-center gap-2">
-          {editing && (
+          {editing && !saved && (
             <button onClick={handleSave} disabled={saving}
               className="btn-primary flex items-center gap-2 text-sm">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {saved ? '保存済み' : '保存'}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? '保存中...' : '保存'}
             </button>
+          )}
+          {saved && (
+            <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
+              <CheckCircle className="h-4 w-4" />保存しました
+            </span>
           )}
           <button onClick={handleDelete} className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50">
             <Trash2 className="h-4 w-4" />
@@ -1020,18 +1041,89 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
           <div className="flex items-center gap-2">
             <Paperclip className="h-4 w-4 text-purple-500" />
             <h3 className="font-semibold text-gray-900 text-sm">添付ファイル</h3>
+            {files.length > 0 && (
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">{files.length}件</span>
+            )}
           </div>
-          <button type="button" onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingFile}
-            className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 border border-purple-300 hover:border-purple-500 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50">
-            {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            {uploadingFile ? 'アップロード中...' : 'ファイルを追加'}
-          </button>
+          {!pendingUpload && (
+            <button type="button" onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFile}
+              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 border border-purple-300 hover:border-purple-500 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50">
+              <Plus className="h-3.5 w-3.5" />
+              ファイルを追加
+            </button>
+          )}
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload}
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.dwg,.dxf" />
         </div>
 
-        {files.length === 0 ? (
+        {/* 選択後のカテゴリ・ラベル入力フォーム */}
+        {pendingUpload && (
+          <div className="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                {pendingUpload.file.type.startsWith('image/')
+                  ? <ImageIcon className="h-5 w-5 text-blue-500" />
+                  : pendingUpload.file.type === 'application/pdf'
+                  ? <FileText className="h-5 w-5 text-red-500" />
+                  : <File className="h-5 w-5 text-gray-400" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 truncate mb-3">{pendingUpload.file.name}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">カテゴリ</label>
+                    <select
+                      value={pendingUpload.category}
+                      onChange={e => setPendingUpload(p => p ? { ...p, category: e.target.value, label: '' } : null)}
+                      className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400">
+                      {FILE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      {pendingUpload.category === '図面' ? '図面の種類' : 'ラベル（任意）'}
+                    </label>
+                    {pendingUpload.category === '図面' ? (
+                      <>
+                        <input
+                          type="text"
+                          list="drawing-labels"
+                          placeholder="選択または直接入力"
+                          value={pendingUpload.label}
+                          onChange={e => setPendingUpload(p => p ? { ...p, label: e.target.value } : null)}
+                          className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                        <datalist id="drawing-labels">
+                          {DRAWING_LABELS.map(l => <option key={l} value={l} />)}
+                        </datalist>
+                      </>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="任意のメモ"
+                        value={pendingUpload.label}
+                        onChange={e => setPendingUpload(p => p ? { ...p, label: e.target.value } : null)}
+                        className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button type="button" onClick={handlePendingUpload} disabled={uploadingFile}
+                    className="flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
+                    {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 rotate-180" />}
+                    {uploadingFile ? 'アップロード中...' : 'アップロード'}
+                  </button>
+                  <button type="button" onClick={() => setPendingUpload(null)} disabled={uploadingFile}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                    <X className="h-3.5 w-3.5" />キャンセル
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {files.length === 0 && !pendingUpload ? (
           <div
             onClick={() => fileInputRef.current?.click()}
             className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center text-gray-400 text-sm cursor-pointer hover:border-purple-300 transition-colors">
@@ -1039,31 +1131,54 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
             <p>写真・図面・書類などをアップロード</p>
             <p className="text-xs mt-1">クリックしてファイルを選択（最大50MB）</p>
           </div>
-        ) : (
+        ) : files.length > 0 ? (
           <div className="space-y-2">
             {files.map(f => (
-              <div key={f.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex-shrink-0">{fileIcon(f.mime_type)}</div>
+              <a key={f.id} href={`/api/construction-ledger/${id}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-purple-50 hover:border-purple-200 border border-transparent transition-colors group">
+                {/* サムネイル or アイコン */}
+                <div className="flex-shrink-0">
+                  {f.mime_type.startsWith('image/') ? (
+                    <img src={f.stored_name} alt={f.original_name}
+                      className="h-12 w-12 object-cover rounded-lg border border-gray-200 bg-gray-100" />
+                  ) : f.mime_type === 'application/pdf' ? (
+                    <div className="h-12 w-12 flex items-center justify-center rounded-lg bg-red-50 border border-red-100">
+                      <FileText className="h-6 w-6 text-red-500" />
+                    </div>
+                  ) : (
+                    <div className="h-12 w-12 flex items-center justify-center rounded-lg bg-gray-100 border border-gray-200">
+                      <File className="h-6 w-6 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                {/* ファイル情報 */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{f.original_name}</p>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CATEGORY_STYLE[f.category] || 'bg-gray-100 text-gray-600'}`}>
+                      {f.category || 'その他'}
+                    </span>
+                    {f.label && (
+                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">{f.label}</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-purple-700">{f.original_name}</p>
                   <p className="text-xs text-gray-400">{formatSize(f.file_size)} · {f.uploaded_by || '不明'} · {f.created_at.slice(0, 10)}</p>
                 </div>
-                <a href={`/api/construction-ledger/${id}/files/${f.id}`}
-                  className="text-blue-400 hover:text-blue-600 transition-colors p-1" title="ダウンロード">
-                  <Download className="h-4 w-4" />
-                </a>
-                <button type="button" onClick={() => handleDeleteFile(f.id)}
-                  className="text-gray-300 hover:text-red-500 transition-colors p-1">
+                {/* 削除ボタン */}
+                <button type="button" onClick={e => { e.preventDefault(); handleDeleteFile(f.id) }}
+                  className="flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100">
                   <Trash2 className="h-4 w-4" />
                 </button>
-              </div>
+              </a>
             ))}
-            <button type="button" onClick={() => fileInputRef.current?.click()}
-              className="w-full text-xs text-gray-400 hover:text-purple-600 text-center py-2 border border-dashed border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
-              + さらに追加
-            </button>
+            {!pendingUpload && (
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-full text-xs text-gray-400 hover:text-purple-600 text-center py-2 border border-dashed border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
+                + さらに追加
+              </button>
+            )}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* 発注履歴 */}
@@ -1124,13 +1239,23 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
         )}
       </div>
 
-      {editing && (
-        <div className="sticky bottom-4 flex justify-end">
-          <button onClick={handleSave} disabled={saving}
-            className="btn-primary flex items-center gap-2 shadow-lg">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            変更を保存
-          </button>
+      {(editing || saving || saved) && (
+        <div className="sticky bottom-4 flex justify-end pointer-events-none">
+          {saved ? (
+            <div className="flex items-center gap-2 bg-green-500 text-white px-5 py-2.5 rounded-xl shadow-lg text-sm font-medium pointer-events-auto">
+              <CheckCircle className="h-4 w-4" />
+              保存しました
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-2.5 pointer-events-auto">
+              <span className="text-xs text-amber-600 font-medium">未保存の変更があります</span>
+              <button onClick={handleSave} disabled={saving}
+                className="btn-primary flex items-center gap-1.5 text-sm py-1.5 px-3">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                {saving ? '保存中...' : '保存する'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

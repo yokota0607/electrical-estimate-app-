@@ -58,9 +58,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       storedUrl = await saveToLocal(id, file)
     }
 
+    const category = (formData.get('category') as string) || 'その他'
+    const label = (formData.get('label') as string) || ''
+
     const [row] = await sql`
-      INSERT INTO construction_files (ledger_id, stored_name, original_name, file_size, mime_type, uploaded_by)
-      VALUES (${Number(id)}, ${storedUrl}, ${file.name}, ${file.size}, ${file.type || ''}, ${user?.displayName || ''})
+      INSERT INTO construction_files (ledger_id, stored_name, original_name, file_size, mime_type, uploaded_by, category, label)
+      VALUES (${Number(id)}, ${storedUrl}, ${file.name}, ${file.size}, ${file.type || ''}, ${user?.displayName || ''}, ${category}, ${label})
       RETURNING *
     `
     return NextResponse.json(row, { status: 201 })

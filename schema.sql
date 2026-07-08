@@ -132,6 +132,8 @@ CREATE TABLE IF NOT EXISTS construction_files (
   file_size INTEGER DEFAULT 0,
   mime_type TEXT DEFAULT '',
   uploaded_by TEXT DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'その他',
+  label TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

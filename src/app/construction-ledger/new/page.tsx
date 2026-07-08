@@ -29,6 +29,7 @@ export default function NewConstructionLedgerPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
+  const [registered, setRegistered] = useState(false)
   const [estimates, setEstimates] = useState<Estimate[]>([])
   const [aiStatus, setAiStatus] = useState<AiStatus>('idle')
   const [aiError, setAiError] = useState('')
@@ -197,8 +198,8 @@ export default function NewConstructionLedgerPage() {
         }),
       })
       if (!res.ok) { alert('保存に失敗しました'); return }
-      const data = await res.json()
-      router.push(`/construction-ledger/${data.id}`)
+      setRegistered(true)
+      setTimeout(() => router.push('/construction-ledger'), 1500)
     } catch {
       alert('保存に失敗しました')
     } finally {
@@ -220,7 +221,7 @@ export default function NewConstructionLedgerPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form id="new-ledger-form" onSubmit={handleSubmit} className="space-y-6">
 
         {/* AI自動入力 */}
         <div className="card p-5">
@@ -502,14 +503,38 @@ export default function NewConstructionLedgerPage() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-3 pb-20">
           <Link href="/construction-ledger" className="btn-secondary">キャンセル</Link>
-          <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            登録する
+          <button type="submit" disabled={saving || registered} className="btn-primary flex items-center gap-2">
+            {registered ? <CheckCircle className="h-4 w-4" /> : saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {registered ? '登録しました' : saving ? '登録中...' : '登録する'}
           </button>
         </div>
       </form>
+
+      {/* スティッキー下部バー */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+        <div className="max-w-3xl mx-auto px-8 pb-4 flex justify-end">
+          {registered ? (
+            <div className="flex items-center gap-2 bg-green-500 text-white px-5 py-2.5 rounded-xl shadow-lg text-sm font-medium pointer-events-auto">
+              <CheckCircle className="h-4 w-4" />
+              登録しました　一覧に戻ります...
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-2.5 pointer-events-auto">
+              <Link href="/construction-ledger" className="text-sm text-gray-500 hover:text-gray-700">キャンセル</Link>
+              <button
+                form="new-ledger-form"
+                type="submit"
+                disabled={saving}
+                className="btn-primary flex items-center gap-1.5 text-sm py-1.5 px-4">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                {saving ? '登録中...' : '登録する'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ShoppingCart, Search, Filter, CheckCircle, Clock, AlertTriangle, Package, ChevronRight } from 'lucide-react'
+import { ShoppingCart, Search, Package, ChevronRight, Trash2 } from 'lucide-react'
 
 interface PurchaseOrder {
   id: number
@@ -95,6 +95,12 @@ export default function PurchaseOrdersPage() {
     load()
   }
 
+  const handleDelete = async (id: number, orderNumber: string) => {
+    if (!confirm(`発注「${orderNumber}」を削除しますか？\nこの操作は元に戻せません。`)) return
+    await fetch(`/api/purchase-orders/${id}`, { method: 'DELETE' })
+    load()
+  }
+
   const months = getMonths(orders)
   const suppliers = getSuppliers(orders)
   const projects = getProjects(orders)
@@ -182,6 +188,7 @@ export default function PurchaseOrdersPage() {
                   <th className="text-right px-4 py-3 text-gray-400 font-medium">金額</th>
                   <th className="text-center px-4 py-3 text-gray-400 font-medium">入荷確認</th>
                   <th className="px-4 py-3 w-10"></th>
+                  <th className="px-4 py-3 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -210,6 +217,12 @@ export default function PurchaseOrdersPage() {
                         <Link href={`/purchase-orders/${o.id}`} className="text-gray-400 hover:text-blue-600">
                           <ChevronRight className="h-4 w-4" />
                         </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button type="button" onClick={() => handleDelete(o.id, o.order_number)}
+                          className="text-gray-300 hover:text-red-500 transition-colors p-1" title="削除">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   )
