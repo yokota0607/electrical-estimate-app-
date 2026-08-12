@@ -40,7 +40,9 @@ export async function proxy(req: NextRequest) {
   const isLoginPage = pathname === '/login'
   const isAuthApi = pathname.startsWith('/api/auth/')
   const isDbInit = pathname === '/api/db-init'
-  const isPublic = isLoginPage || isAuthApi || isDbInit
+  // /api/public/* はトークン制の閲覧専用API（各ルート内で token を検証する）
+  const isPublicApi = pathname.startsWith('/api/public/')
+  const isPublic = isLoginPage || isAuthApi || isDbInit || isPublicApi
 
   const token = req.cookies.get('session')?.value
   const authenticated = token ? await verifyToken(token) : false
