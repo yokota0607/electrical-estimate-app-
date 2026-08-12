@@ -43,3 +43,9 @@ next-env.d.ts
 # local data (SQLite DB, uploaded files)
 /data/
 /public/uploads/
+
+# local dev artifacts & secrets (do not commit)
+.dev-pid
+*cookies*.txt
+*.cookies
+screenshots/*cookie*
