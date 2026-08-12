@@ -161,6 +161,32 @@ export async function POST() {
       )
     `
     await sql`
+      CREATE TABLE IF NOT EXISTS site_photos (
+        id SERIAL PRIMARY KEY,
+        ledger_id INTEGER NOT NULL REFERENCES construction_ledger(id) ON DELETE CASCADE,
+        stored_name TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        file_size INTEGER DEFAULT 0,
+        mime_type TEXT DEFAULT '',
+        phase TEXT NOT NULL DEFAULT '施工前',
+        caption TEXT DEFAULT '',
+        uploaded_by TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
+      CREATE TABLE IF NOT EXISTS daily_reports (
+        id SERIAL PRIMARY KEY,
+        ledger_id INTEGER NOT NULL REFERENCES construction_ledger(id) ON DELETE CASCADE,
+        report_date TEXT DEFAULT '',
+        work_content TEXT DEFAULT '',
+        worker_name TEXT DEFAULT '',
+        work_hours REAL DEFAULT 0,
+        created_by TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `
+    await sql`
       CREATE TABLE IF NOT EXISTS subcontractor_payments (
         id SERIAL PRIMARY KEY,
         ledger_id INTEGER NOT NULL REFERENCES construction_ledger(id) ON DELETE CASCADE,
@@ -227,6 +253,32 @@ export async function POST() {
         unit_price REAL DEFAULT 0,
         amount REAL DEFAULT 0,
         sort_order INTEGER DEFAULT 0
+      )
+    `
+
+    await sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS source_file_id INTEGER DEFAULT NULL REFERENCES construction_files(id) ON DELETE SET NULL`
+    await sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS order_category TEXT DEFAULT '電気工事材料'`
+    await sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS actual_delivery_date TEXT DEFAULT ''`
+    await sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS order_payment_status TEXT DEFAULT '未払い'`
+    await sql`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_date TEXT DEFAULT ''`
+
+    // 見積書PDFを「契約金額の根拠」としてマークするカラム
+    await sql`ALTER TABLE construction_files ADD COLUMN IF NOT EXISTS is_contract_basis BOOLEAN DEFAULT false`
+    await sql`ALTER TABLE construction_files ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'その他'`
+    await sql`ALTER TABLE construction_files ADD COLUMN IF NOT EXISTS label TEXT NOT NULL DEFAULT ''`
+
+    // 発注書ファイル添付テーブル
+    await sql`
+      CREATE TABLE IF NOT EXISTS purchase_order_files (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+        stored_name TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        file_size INTEGER DEFAULT 0,
+        mime_type TEXT DEFAULT '',
+        uploaded_by TEXT DEFAULT '',
+        label TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `
 

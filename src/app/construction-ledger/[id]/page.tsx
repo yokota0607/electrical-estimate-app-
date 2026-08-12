@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Save, Trash2, Loader2, CheckCircle, Link2, Edit2, Plus, X, Banknote,
-  Paperclip, Download, FileText, Image as ImageIcon, File, Building2, ClipboardList, ShoppingCart, ChevronRight
+  Paperclip, Download, FileText, Image as ImageIcon, File, Building2, ClipboardList, ShoppingCart, ChevronRight,
+  Camera, NotebookPen, Clock, User
 } from 'lucide-react'
 import CurrencyInput from '@/components/CurrencyInput'
 import TaxCurrencyInput from '@/components/TaxCurrencyInput'
@@ -91,6 +92,30 @@ interface ConstructionProcess {
   created_at: string
 }
 
+interface SitePhoto {
+  id: number
+  ledger_id: number
+  stored_name: string
+  original_name: string
+  file_size: number
+  mime_type: string
+  phase: string
+  caption: string
+  uploaded_by: string
+  created_at: string
+}
+
+interface DailyReport {
+  id: number
+  ledger_id: number
+  report_date: string
+  work_content: string
+  worker_name: string
+  work_hours: number
+  created_by: string
+  created_at: string
+}
+
 interface Estimate {
   id: number
   title: string
@@ -106,20 +131,55 @@ interface PurchaseOrderSummary {
   order_date: string
   supplier: string
   delivery_date: string
+  actual_delivery_date: string
   is_received: number
   total_amount: number
+  order_category: string
+  order_payment_status: string
+  payment_date: string
+  notes: string
 }
 
-const FILE_CATEGORIES = ['図面', '見積書', '契約書', '写真', 'その他']
+interface OrderItem {
+  name: string
+  quantity: number
+  unit: string
+  unit_price: number
+  amount: number
+  _key: number
+}
+
+interface OrderDraft {
+  supplier: string
+  items: OrderItem[]
+  subtotal: number
+  tax: number
+  total: number
+  notes: string
+  fileId: number
+  fileUrl: string
+}
+
+const FILE_CATEGORIES = ['図面', '見積書(受領)', '見積書(提出)', '契約書', '写真', 'その他']
 const DRAWING_LABELS = ['電気系統図', '配線ルート図', '平面図', '単線結線図', '外線図', '盤結線図']
 const CATEGORY_STYLE: Record<string, string> = {
-  '図面':   'bg-blue-100 text-blue-700',
-  '見積書': 'bg-green-100 text-green-700',
-  '契約書': 'bg-purple-100 text-purple-700',
-  '写真':   'bg-orange-100 text-orange-700',
-  'その他': 'bg-gray-100 text-gray-600',
+  '図面':        'bg-blue-100 text-blue-700',
+  '見積書':      'bg-green-100 text-green-700',
+  '見積書(受領)': 'bg-green-100 text-green-700',
+  '見積書(提出)': 'bg-teal-100 text-teal-700',
+  '契約書':      'bg-purple-100 text-purple-700',
+  '写真':        'bg-orange-100 text-orange-700',
+  'その他':      'bg-gray-100 text-gray-600',
 }
 
+const ORDER_CATEGORIES = ['電気工事材料', '空調機器', '高圧機器・キュービクル', '照明器具', 'EV充電器', '制御盤', '外注工事', 'その他']
+const ORDER_PAYMENT_STATUSES = ['未払い', '支払済み']
+const PHOTO_PHASES = ['施工前', '施工中', '完了後']
+const PHOTO_PHASE_STYLE: Record<string, string> = {
+  '施工前': 'bg-sky-100 text-sky-700',
+  '施工中': 'bg-amber-100 text-amber-700',
+  '完了後': 'bg-green-100 text-green-700',
+}
 const PAYMENT_STATUSES = ['未入金', '一部入金', '入金済み']
 const WORK_STATUSES = ['未着工', '着工中', '完成未請求', '請求済未入金', '完了']
 const PAYMENT_TYPES = ['着手金', '中間金', '出来高', '完成金', 'その他']
@@ -180,6 +240,15 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pendingUpload, setPendingUpload] = useState<{ file: File; category: string; label: string } | null>(null)
+  const [editingFileId, setEditingFileId] = useState<number | null>(null)
+  const [editFileForm, setEditFileForm] = useState({ category: 'その他', label: '' })
+  const [savingFileEdit, setSavingFileEdit] = useState(false)
+
+  const [hasApiKey, setHasApiKey] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [orderDraft, setOrderDraft] = useState<OrderDraft | null>(null)
+  const [registeringOrder, setRegisteringOrder] = useState(false)
+  const [showUploadChoice, setShowUploadChoice] = useState(false)
 
   const [subPayments, setSubPayments] = useState<SubcontractorPayment[]>([])
   const [addingSubPayment, setAddingSubPayment] = useState(false)
@@ -198,6 +267,22 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
 
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrderSummary[]>([])
   const [showOrderForm, setShowOrderForm] = useState(false)
+
+  const [photos, setPhotos] = useState<SitePhoto[]>([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoPhase, setPhotoPhase] = useState('施工前')
+  const [photoFilter, setPhotoFilter] = useState('すべて')
+  const [lightbox, setLightbox] = useState<SitePhoto | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  const [reports, setReports] = useState<DailyReport[]>([])
+  const [savingReport, setSavingReport] = useState(false)
+  const [newReport, setNewReport] = useState({
+    report_date: new Date().toISOString().slice(0, 10),
+    worker_name: '',
+    work_hours: '',
+    work_content: '',
+  })
 
   const loadProcesses = async () => {
     const res = await fetch(`/api/construction-ledger/${id}/processes`)
@@ -231,7 +316,10 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
     loadSubPayments()
     loadProcesses()
     loadPurchaseOrders()
+    loadPhotos()
+    loadReports()
     fetch('/api/estimates').then(r => r.json()).then(d => setEstimates(Array.isArray(d) ? d : []))
+    fetch('/api/system/capabilities').then(r => r.json()).then(d => setHasApiKey(!!d.hasAnthropicKey))
   }, [id])
 
   const handleAddPayment = async () => {
@@ -377,6 +465,211 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
     loadFiles()
   }
 
+  const startAnalysis = async (file: ConstructionFile) => {
+    setAnalyzing(true)
+    setOrderDraft(null)
+    try {
+      const res = await fetch(`/api/construction-ledger/${id}/files/${file.id}/analyze-order`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(`読み取りエラー: ${err.error}`)
+        return
+      }
+      const data = await res.json()
+      const fileUrl = file.stored_name.startsWith('http')
+        ? file.stored_name
+        : file.stored_name
+      setOrderDraft({
+        supplier: data.supplier || '',
+        items: (data.items || []).map((it: { name: string; quantity: number; unit: string; unit_price: number; amount: number }, i: number) => ({ ...it, _key: i })),
+        subtotal: data.subtotal || 0,
+        tax: data.tax || 0,
+        total: data.total || 0,
+        notes: data.notes || '',
+        fileId: file.id,
+        fileUrl,
+      })
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const handlePendingUploadAndAnalyze = async () => {
+    if (!pendingUpload) return
+    setUploadingFile(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', pendingUpload.file)
+      fd.append('category', pendingUpload.category)
+      fd.append('label', pendingUpload.label)
+      const res = await fetch(`/api/construction-ledger/${id}/files`, { method: 'POST', body: fd })
+      if (!res.ok) { alert('アップロードに失敗しました'); return }
+      const uploadedFile = await res.json() as ConstructionFile
+      setPendingUpload(null)
+      setShowUploadChoice(false)
+      loadFiles()
+      await startAnalysis(uploadedFile)
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
+  const handleRegisterOrder = async () => {
+    if (!orderDraft) return
+    setRegisteringOrder(true)
+    try {
+      const itemTotal = orderDraft.items.reduce((s, it) => s + (Number(it.amount) || 0), 0)
+      const res = await fetch('/api/purchase-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_date: new Date().toISOString().slice(0, 10),
+          supplier: orderDraft.supplier,
+          ledger_id: Number(id),
+          project_name: data?.project_name || '',
+          notes: orderDraft.notes,
+          source_file_id: orderDraft.fileId,
+          items: orderDraft.items.map(it => ({
+            name: it.name,
+            quantity: Number(it.quantity) || 1,
+            unit: it.unit || '個',
+            unit_price: Number(it.unit_price) || 0,
+            amount: Number(it.amount) || 0,
+          })),
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        alert(`発注登録エラー: ${err.error}`)
+        return
+      }
+      setOrderDraft(null)
+      loadPurchaseOrders()
+      alert('発注に登録しました')
+    } finally {
+      setRegisteringOrder(false)
+    }
+  }
+
+  const updateOrderItem = (key: number, field: keyof Omit<OrderItem, '_key'>, value: string) => {
+    setOrderDraft(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        items: prev.items.map(it => {
+          if (it._key !== key) return it
+          const updated = { ...it, [field]: field === 'name' || field === 'unit' ? value : Number(value) || 0 }
+          if (field === 'quantity' || field === 'unit_price') {
+            updated.amount = updated.quantity * updated.unit_price
+          }
+          return updated
+        }),
+      }
+    })
+  }
+
+  const addOrderItem = () => {
+    setOrderDraft(prev => {
+      if (!prev) return prev
+      const maxKey = prev.items.reduce((m, it) => Math.max(m, it._key), -1)
+      return { ...prev, items: [...prev.items, { name: '', quantity: 1, unit: '個', unit_price: 0, amount: 0, _key: maxKey + 1 }] }
+    })
+  }
+
+  const removeOrderItem = (key: number) => {
+    setOrderDraft(prev => {
+      if (!prev) return prev
+      return { ...prev, items: prev.items.filter(it => it._key !== key) }
+    })
+  }
+
+  const handleSaveFileEdit = async () => {
+    if (editingFileId === null) return
+    setSavingFileEdit(true)
+    try {
+      const res = await fetch(`/api/construction-ledger/${id}/files/${editingFileId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFileForm),
+      })
+      if (!res.ok) { alert('更新に失敗しました'); return }
+      setEditingFileId(null)
+      loadFiles()
+    } finally {
+      setSavingFileEdit(false)
+    }
+  }
+
+  const loadPhotos = async () => {
+    const res = await fetch(`/api/construction-ledger/${id}/photos`)
+    if (res.ok) setPhotos(await res.json())
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || [])
+    e.target.value = ''
+    if (selected.length === 0) return
+    setUploadingPhoto(true)
+    try {
+      for (const file of selected) {
+        if (!file.type.startsWith('image/')) continue
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('phase', photoPhase)
+        const res = await fetch(`/api/construction-ledger/${id}/photos`, { method: 'POST', body: fd })
+        if (!res.ok) { alert(`「${file.name}」のアップロードに失敗しました`) }
+      }
+      await loadPhotos()
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  const handleUpdatePhotoPhase = async (photo: SitePhoto, phase: string) => {
+    setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, phase } : p))
+    await fetch(`/api/construction-ledger/${id}/photos/${photo.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phase, caption: photo.caption }),
+    })
+  }
+
+  const handleDeletePhoto = async (pid: number) => {
+    if (!confirm('この写真を削除しますか？')) return
+    await fetch(`/api/construction-ledger/${id}/photos/${pid}`, { method: 'DELETE' })
+    setLightbox(null)
+    loadPhotos()
+  }
+
+  const loadReports = async () => {
+    const res = await fetch(`/api/construction-ledger/${id}/daily-reports`)
+    if (res.ok) setReports(await res.json())
+  }
+
+  const handleAddReport = async () => {
+    if (!newReport.work_content.trim()) { alert('作業内容を入力してください'); return }
+    setSavingReport(true)
+    try {
+      const res = await fetch(`/api/construction-ledger/${id}/daily-reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newReport, work_hours: Number(newReport.work_hours) || 0 }),
+      })
+      if (res.ok) {
+        setNewReport({ report_date: new Date().toISOString().slice(0, 10), worker_name: '', work_hours: '', work_content: '' })
+        loadReports()
+      }
+    } finally {
+      setSavingReport(false)
+    }
+  }
+
+  const handleDeleteReport = async (rid: number) => {
+    if (!confirm('この日報を削除しますか？')) return
+    await fetch(`/api/construction-ledger/${id}/daily-reports/${rid}`, { method: 'DELETE' })
+    loadReports()
+  }
+
   function formatSize(bytes: number) {
     if (bytes < 1024) return `${bytes}B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`
@@ -388,12 +681,21 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
     setEditing(true)
   }
 
-  const profit = (Number(form.contract_amount) || 0)
-    - (Number(form.material_cost) || 0)
-    - (Number(form.labor_cost) || 0)
-    - (Number(form.subcontract_cost) || 0)
-    - (Number(form.site_misc_cost) || 0)
-    - (Number(form.purchase_cost) || 0)
+  const materialCostAuto = purchaseOrders
+    .filter(o => (o.order_category || '電気工事材料') !== '外注工事')
+    .reduce((s, o) => s + (o.total_amount || 0), 0)
+  const subcontractCostAuto = purchaseOrders
+    .filter(o => (o.order_category || '電気工事材料') === '外注工事')
+    .reduce((s, o) => s + (o.total_amount || 0), 0)
+  const unpaidAmount = purchaseOrders
+    .filter(o => (o.order_payment_status || '未払い') === '未払い')
+    .reduce((s, o) => s + (o.total_amount || 0), 0)
+  const totalOrderAmount = purchaseOrders.reduce((s, o) => s + (o.total_amount || 0), 0)
+  const paidOrderAmount = purchaseOrders
+    .filter(o => (o.order_payment_status || '未払い') === '支払済み')
+    .reduce((s, o) => s + (o.total_amount || 0), 0)
+  const costTotal = materialCostAuto + subcontractCostAuto + (Number(form.labor_cost) || 0) + (Number(form.site_misc_cost) || 0)
+  const profit = (Number(form.contract_amount) || 0) - costTotal
 
   const handleSave = async () => {
     setSaving(true)
@@ -418,6 +720,15 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
     if (!confirm('この工事を台帳から削除しますか？')) return
     await fetch(`/api/construction-ledger/${id}`, { method: 'DELETE' })
     router.push('/construction-ledger')
+  }
+
+  const handlePatchOrder = async (orderId: number, fields: Partial<PurchaseOrderSummary>) => {
+    setPurchaseOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...fields } : o))
+    await fetch(`/api/purchase-orders/${orderId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    })
   }
 
   if (loading) {
@@ -527,9 +838,15 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
         </div>
       </div>
 
-      {/* 金額 */}
+      {/* 金額情報 */}
       <div className="card p-5 mb-6">
         <h3 className="font-semibold text-gray-900 text-sm mb-4">金額情報</h3>
+        {unpaidAmount > 0 && (
+          <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <span className="text-red-600 text-sm font-semibold">未払い {formatCurrency(unpaidAmount)}</span>
+            <span className="text-red-400 text-xs">（発注履歴より）</span>
+          </div>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
           <div>
             <label className="label">契約金額（税抜）</label>
@@ -567,7 +884,7 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
           </div>
         </div>
 
-        {/* 利益サマリー */}
+        {/* 原価・粗利サマリー */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg text-sm">
           <div className="text-center">
             <p className="text-gray-500 text-xs mb-1">契約金額（税抜）</p>
@@ -575,18 +892,10 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
           </div>
           <div className="text-center">
             <p className="text-gray-500 text-xs mb-1">原価合計</p>
-            <p className="font-semibold text-gray-900">
-              {formatCurrency(
-                (Number(form.material_cost) || 0) +
-                (Number(form.labor_cost) || 0) +
-                (Number(form.subcontract_cost) || 0) +
-                (Number(form.site_misc_cost) || 0) +
-                (Number(form.purchase_cost) || 0)
-              )}
-            </p>
+            <p className="font-semibold text-gray-900">{formatCurrency(costTotal)}</p>
           </div>
           <div className="text-center">
-            <p className="text-gray-500 text-xs mb-1">利益</p>
+            <p className="text-gray-500 text-xs mb-1">粗利</p>
             <p className={`font-bold text-lg ${profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
               {formatCurrency(profit)}
             </p>
@@ -1108,17 +1417,47 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 mt-3">
-                  <button type="button" onClick={handlePendingUpload} disabled={uploadingFile}
-                    className="flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
-                    {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 rotate-180" />}
-                    {uploadingFile ? 'アップロード中...' : 'アップロード'}
-                  </button>
-                  <button type="button" onClick={() => setPendingUpload(null)} disabled={uploadingFile}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
-                    <X className="h-3.5 w-3.5" />キャンセル
-                  </button>
-                </div>
+                {/* 見積書(受領)PDFの場合は選択肢を表示 */}
+                {pendingUpload.category === '見積書(受領)' && pendingUpload.file.type === 'application/pdf' && !showUploadChoice && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-xs font-medium text-blue-700 mb-2">アップロード後の処理を選んでください</p>
+                    <div className="flex gap-2 flex-wrap">
+                      <button type="button" onClick={() => { setShowUploadChoice(false); handlePendingUpload() }} disabled={uploadingFile}
+                        className="flex items-center gap-1 text-xs bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50">
+                        <Download className="h-3.5 w-3.5 rotate-180" />保存だけ
+                      </button>
+                      <button type="button" onClick={handlePendingUploadAndAnalyze}
+                        disabled={uploadingFile || !hasApiKey}
+                        title={!hasApiKey ? 'APIキーの設定が必要です' : ''}
+                        className="flex items-center gap-1 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                        {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit2 className="h-3.5 w-3.5" />}
+                        {uploadingFile ? '処理中...' : '読み取って発注に登録'}
+                      </button>
+                      {!hasApiKey && <p className="text-xs text-red-500 self-center">APIキーの設定が必要です</p>}
+                    </div>
+                  </div>
+                )}
+                {(pendingUpload.category !== '見積書(受領)' || pendingUpload.file.type !== 'application/pdf') && (
+                  <div className="flex gap-2 mt-3">
+                    <button type="button" onClick={handlePendingUpload} disabled={uploadingFile}
+                      className="flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
+                      {uploadingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 rotate-180" />}
+                      {uploadingFile ? 'アップロード中...' : 'アップロード'}
+                    </button>
+                    <button type="button" onClick={() => setPendingUpload(null)} disabled={uploadingFile}
+                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                      <X className="h-3.5 w-3.5" />キャンセル
+                    </button>
+                  </div>
+                )}
+                {(pendingUpload.category === '見積書(受領)' && pendingUpload.file.type === 'application/pdf') && (
+                  <div className="flex gap-2 mt-2">
+                    <button type="button" onClick={() => setPendingUpload(null)} disabled={uploadingFile}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded transition-colors disabled:opacity-50">
+                      <X className="h-3 w-3" />キャンセル
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1134,44 +1473,136 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
           </div>
         ) : files.length > 0 ? (
           <div className="space-y-2">
-            {files.map(f => (
-              <a key={f.id} href={`/api/construction-ledger/${id}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-purple-50 hover:border-purple-200 border border-transparent transition-colors group">
-                {/* サムネイル or アイコン */}
-                <div className="flex-shrink-0">
-                  {f.mime_type.startsWith('image/') ? (
-                    <img src={f.stored_name} alt={f.original_name}
-                      className="h-12 w-12 object-cover rounded-lg border border-gray-200 bg-gray-100" />
-                  ) : f.mime_type === 'application/pdf' ? (
-                    <div className="h-12 w-12 flex items-center justify-center rounded-lg bg-red-50 border border-red-100">
-                      <FileText className="h-6 w-6 text-red-500" />
+            {files.map(f => {
+              if (editingFileId === f.id) {
+                return (
+                  <div key={f.id} className="p-3 bg-purple-50 rounded-xl border border-purple-200">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-1">
+                        {f.mime_type.startsWith('image/') ? (
+                          <img src={f.stored_name} alt={f.original_name}
+                            className="h-10 w-10 object-cover rounded-lg border border-gray-200 bg-gray-100" />
+                        ) : f.mime_type === 'application/pdf' ? (
+                          <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-red-50 border border-red-100">
+                            <FileText className="h-5 w-5 text-red-500" />
+                          </div>
+                        ) : (
+                          <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 border border-gray-200">
+                            <File className="h-5 w-5 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate mb-2">{f.original_name}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">カテゴリ</label>
+                            <select
+                              value={editFileForm.category}
+                              onChange={e => setEditFileForm(p => ({ ...p, category: e.target.value, label: '' }))}
+                              className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400">
+                              {FILE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">
+                              {editFileForm.category === '図面' ? '図面の種類' : 'ラベル（任意）'}
+                            </label>
+                            {editFileForm.category === '図面' ? (
+                              <>
+                                <input
+                                  type="text"
+                                  list="edit-drawing-labels"
+                                  placeholder="選択または直接入力"
+                                  value={editFileForm.label}
+                                  onChange={e => setEditFileForm(p => ({ ...p, label: e.target.value }))}
+                                  className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                                <datalist id="edit-drawing-labels">
+                                  {DRAWING_LABELS.map(l => <option key={l} value={l} />)}
+                                </datalist>
+                              </>
+                            ) : (
+                              <input
+                                type="text"
+                                placeholder="任意のメモ"
+                                value={editFileForm.label}
+                                onChange={e => setEditFileForm(p => ({ ...p, label: e.target.value }))}
+                                className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-3">
+                          <button type="button" onClick={handleSaveFileEdit} disabled={savingFileEdit}
+                            className="flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50">
+                            {savingFileEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                            保存
+                          </button>
+                          <button type="button" onClick={() => setEditingFileId(null)} disabled={savingFileEdit}
+                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                            <X className="h-3.5 w-3.5" />キャンセル
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="h-12 w-12 flex items-center justify-center rounded-lg bg-gray-100 border border-gray-200">
-                      <File className="h-6 w-6 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                {/* ファイル情報 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CATEGORY_STYLE[f.category] || 'bg-gray-100 text-gray-600'}`}>
-                      {f.category || 'その他'}
-                    </span>
-                    {f.label && (
-                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">{f.label}</span>
+                  </div>
+                )
+              }
+              return (
+                <a key={f.id} href={`/api/construction-ledger/${id}/files/${f.id}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-purple-50 hover:border-purple-200 border border-transparent transition-colors group">
+                  {/* サムネイル or アイコン */}
+                  <div className="flex-shrink-0">
+                    {f.mime_type.startsWith('image/') ? (
+                      <img src={f.stored_name} alt={f.original_name}
+                        className="h-12 w-12 object-cover rounded-lg border border-gray-200 bg-gray-100" />
+                    ) : f.mime_type === 'application/pdf' ? (
+                      <div className="h-12 w-12 flex items-center justify-center rounded-lg bg-red-50 border border-red-100">
+                        <FileText className="h-6 w-6 text-red-500" />
+                      </div>
+                    ) : (
+                      <div className="h-12 w-12 flex items-center justify-center rounded-lg bg-gray-100 border border-gray-200">
+                        <File className="h-6 w-6 text-gray-400" />
+                      </div>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-purple-700">{f.original_name}</p>
-                  <p className="text-xs text-gray-400">{formatSize(f.file_size)} · {f.uploaded_by || '不明'} · {f.created_at.slice(0, 10)}</p>
-                </div>
-                {/* 削除ボタン */}
-                <button type="button" onClick={e => { e.preventDefault(); handleDeleteFile(f.id) }}
-                  className="flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </a>
-            ))}
+                  {/* ファイル情報 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CATEGORY_STYLE[f.category] || 'bg-gray-100 text-gray-600'}`}>
+                        {f.category || 'その他'}
+                      </span>
+                      {f.label && (
+                        <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">{f.label}</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 truncate group-hover:text-purple-700">{f.original_name}</p>
+                    <p className="text-xs text-gray-400">{formatSize(f.file_size)} · {f.uploaded_by || '不明'} · {f.created_at.slice(0, 10)}</p>
+                  </div>
+                  {/* 見積書(受領)PDF：読み取り→発注ボタン（既存の「見積書」も後方互換） */}
+                  {(f.category === '見積書(受領)' || f.category === '見積書') && f.mime_type === 'application/pdf' && (
+                    <button type="button"
+                      onClick={e => { e.preventDefault(); startAnalysis(f) }}
+                      disabled={analyzing || !hasApiKey}
+                      title={!hasApiKey ? 'APIキーの設定が必要です' : '読み取って発注に登録'}
+                      className="flex-shrink-0 flex items-center gap-1 text-xs text-blue-600 border border-blue-300 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100">
+                      {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Edit2 className="h-3 w-3" />}
+                      発注登録
+                    </button>
+                  )}
+                  {/* 編集ボタン */}
+                  <button type="button"
+                    onClick={e => { e.preventDefault(); setEditingFileId(f.id); setEditFileForm({ category: f.category || 'その他', label: f.label || '' }) }}
+                    className="flex-shrink-0 text-gray-300 hover:text-purple-500 transition-colors p-1 opacity-0 group-hover:opacity-100">
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  {/* 削除ボタン */}
+                  <button type="button" onClick={e => { e.preventDefault(); handleDeleteFile(f.id) }}
+                    className="flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </a>
+              )
+            })}
             {!pendingUpload && (
               <button type="button" onClick={() => fileInputRef.current?.click()}
                 className="w-full text-xs text-gray-400 hover:text-purple-600 text-center py-2 border border-dashed border-gray-200 rounded-lg hover:border-purple-300 transition-colors">
@@ -1180,6 +1611,87 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
             )}
           </div>
         ) : null}
+      </div>
+
+      {/* 現場写真 */}
+      <div className="card p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Camera className="h-4 w-4 text-rose-500" />
+            <h3 className="font-semibold text-gray-900 text-sm">現場写真</h3>
+            {photos.length > 0 && (
+              <span className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">{photos.length}枚</span>
+            )}
+          </div>
+        </div>
+
+        {/* アップロード操作 */}
+        <div className="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl">
+          <p className="text-xs text-gray-500 mb-2">タグを選んで写真を追加（複数選択・撮影可）</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {PHOTO_PHASES.map(ph => (
+              <button key={ph} type="button" onClick={() => setPhotoPhase(ph)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  photoPhase === ph
+                    ? 'bg-rose-600 text-white border-rose-600'
+                    : 'text-gray-600 border-gray-300 hover:border-rose-400'
+                }`}>
+                {ph}
+              </button>
+            ))}
+            <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
+              className="ml-auto flex items-center gap-1 text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-50">
+              {uploadingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              {uploadingPhoto ? 'アップロード中...' : `「${photoPhase}」で写真を追加`}
+            </button>
+          </div>
+          <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+        </div>
+
+        {/* フィルタ */}
+        {photos.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {['すべて', ...PHOTO_PHASES].map(f => {
+              const count = f === 'すべて' ? photos.length : photos.filter(p => p.phase === f).length
+              return (
+                <button key={f} type="button" onClick={() => setPhotoFilter(f)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    photoFilter === f
+                      ? 'bg-gray-800 text-white border-gray-800'
+                      : 'text-gray-500 border-gray-200 hover:border-gray-400'
+                  }`}>
+                  {f}（{count}）
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* サムネイル一覧 */}
+        {photos.length === 0 ? (
+          <div
+            onClick={() => photoInputRef.current?.click()}
+            className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center text-gray-400 text-sm cursor-pointer hover:border-rose-300 transition-colors">
+            <Camera className="h-7 w-7 mx-auto mb-2 opacity-40" />
+            <p>現場写真をアップロード</p>
+            <p className="text-xs mt-1">施工前・施工中・完了後の写真を記録できます</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+            {photos
+              .filter(p => photoFilter === 'すべて' || p.phase === photoFilter)
+              .map(p => (
+                <button key={p.id} type="button" onClick={() => setLightbox(p)}
+                  className="group relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-400">
+                  <img src={p.stored_name} alt={p.caption || p.original_name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
+                  <span className={`absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${PHOTO_PHASE_STYLE[p.phase] || 'bg-gray-100 text-gray-600'}`}>
+                    {p.phase}
+                  </span>
+                </button>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* 発注履歴 */}
@@ -1197,48 +1709,390 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
             <Plus className="h-3.5 w-3.5" />新規発注
           </Link>
         </div>
+
+        {/* 発注合計サマリー */}
+        {purchaseOrders.length > 0 && (
+          <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-blue-50 rounded-lg text-xs text-center">
+            <div>
+              <p className="text-gray-500 mb-0.5">発注金額合計</p>
+              <p className="font-semibold text-gray-800">{formatCurrency(totalOrderAmount)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 mb-0.5">うち支払済み</p>
+              <p className="font-semibold text-green-700">{formatCurrency(paidOrderAmount)}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 mb-0.5">うち未払い</p>
+              <p className={`font-semibold ${unpaidAmount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                {formatCurrency(unpaidAmount)}
+              </p>
+            </div>
+          </div>
+        )}
+
         {purchaseOrders.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center text-gray-400 text-sm">
             <ShoppingCart className="h-6 w-6 mx-auto mb-2 opacity-30" />
             <p>発注履歴がありません</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {purchaseOrders.map(o => {
-              const today = new Date().toISOString().slice(0, 10)
-              let statusLabel = '待機中'
-              let statusColor = 'bg-gray-100 text-gray-600'
-              if (o.is_received) { statusLabel = '入荷済み'; statusColor = 'bg-green-100 text-green-700' }
-              else if (o.delivery_date && o.delivery_date < today) { statusLabel = '納期遅れ'; statusColor = 'bg-red-100 text-red-700' }
-              else if (o.delivery_date) { statusLabel = '待機中'; statusColor = 'bg-gray-100 text-gray-600' }
-              return (
-                <Link key={o.id} href={`/purchase-orders/${o.id}`}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-gray-500">{o.order_number}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {o.order_date} / {o.supplier}
-                      {o.delivery_date && <span className="ml-2">納品予定: {o.delivery_date}</span>}
-                    </div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900 flex-shrink-0">
-                    {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(o.total_amount || 0)}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
-                </Link>
-              )
-            })}
-            <div className="text-right text-sm font-semibold text-gray-700 pt-1">
-              発注合計: {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(
-                purchaseOrders.reduce((s, o) => s + (o.total_amount || 0), 0)
-              )}
-            </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs" style={{ minWidth: '900px' }}>
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">発注日</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">発注内容</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">発注先</th>
+                  <th className="text-right px-2 py-2 text-gray-400 font-medium whitespace-nowrap">金額</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">納品予定日</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">納品日</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">支払日</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">支払状況</th>
+                  <th className="text-left px-2 py-2 text-gray-400 font-medium whitespace-nowrap">備考</th>
+                  <th className="px-2 py-2 w-6"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {purchaseOrders.map(o => (
+                  <tr key={o.id} className="hover:bg-gray-50">
+                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{o.order_date || '—'}</td>
+                    <td className="px-2 py-2">
+                      <select
+                        value={o.order_category || '電気工事材料'}
+                        onChange={e => handlePatchOrder(o.id, { order_category: e.target.value })}
+                        className="text-xs border border-gray-200 rounded px-1 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        style={{ minWidth: '110px' }}
+                      >
+                        {ORDER_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-2 text-gray-700 whitespace-nowrap">{o.supplier || '—'}</td>
+                    <td className="px-2 py-2 text-right font-medium text-gray-900 whitespace-nowrap">
+                      {formatCurrency(o.total_amount || 0)}
+                    </td>
+                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap">{o.delivery_date || '—'}</td>
+                    <td className="px-2 py-2">
+                      <input
+                        key={`${o.id}-add-${o.actual_delivery_date}`}
+                        type="date"
+                        defaultValue={o.actual_delivery_date || ''}
+                        onBlur={e => { if (e.target.value !== (o.actual_delivery_date || '')) handlePatchOrder(o.id, { actual_delivery_date: e.target.value }) }}
+                        className="text-xs border border-gray-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        style={{ width: '120px' }}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        key={`${o.id}-pd-${o.payment_date}`}
+                        type="date"
+                        defaultValue={o.payment_date || ''}
+                        onBlur={e => { if (e.target.value !== (o.payment_date || '')) handlePatchOrder(o.id, { payment_date: e.target.value }) }}
+                        className="text-xs border border-gray-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        style={{ width: '120px' }}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <select
+                        value={o.order_payment_status || '未払い'}
+                        onChange={e => handlePatchOrder(o.id, { order_payment_status: e.target.value })}
+                        className={`text-xs border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400 ${(o.order_payment_status || '未払い') === '支払済み' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}
+                      >
+                        {ORDER_PAYMENT_STATUSES.map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        key={`${o.id}-notes-${o.notes}`}
+                        defaultValue={o.notes || ''}
+                        onBlur={e => { if (e.target.value !== (o.notes || '')) handlePatchOrder(o.id, { notes: e.target.value }) }}
+                        className="text-xs border border-gray-200 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        placeholder="備考"
+                        style={{ width: '90px' }}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <Link href={`/purchase-orders/${o.id}`}
+                        className="text-gray-300 hover:text-blue-500 transition-colors">
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
+
+      {/* 作業日報 */}
+      <div className="card p-5 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <NotebookPen className="h-4 w-4 text-teal-500" />
+          <h3 className="font-semibold text-gray-900 text-sm">作業日報</h3>
+          {reports.length > 0 && (
+            <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{reports.length}件</span>
+          )}
+        </div>
+
+        {/* 入力フォーム */}
+        <div className="border border-teal-200 rounded-xl p-4 mb-4 bg-teal-50">
+          <p className="text-xs font-medium text-teal-700 mb-3">日報を記録</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div>
+              <label className="label">日付</label>
+              <input type="date" className="input" value={newReport.report_date}
+                onChange={e => setNewReport(r => ({ ...r, report_date: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">作業員名</label>
+              <input className="input" placeholder="山田 太郎" value={newReport.worker_name}
+                onChange={e => setNewReport(r => ({ ...r, worker_name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">作業時間（時間）</label>
+              <input type="number" min="0" step="0.5" className="input text-right" placeholder="8"
+                value={newReport.work_hours}
+                onChange={e => setNewReport(r => ({ ...r, work_hours: e.target.value }))} />
+            </div>
+            <div className="col-span-2 md:col-span-4">
+              <label className="label">作業内容 <span className="text-red-500">*</span></label>
+              <textarea className="input" rows={2} placeholder="配線工事、器具取付 など"
+                value={newReport.work_content}
+                onChange={e => setNewReport(r => ({ ...r, work_content: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex justify-end mt-3">
+            <button type="button" onClick={handleAddReport} disabled={savingReport}
+              className="btn-primary text-xs flex items-center gap-1">
+              {savingReport ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              日報を追加
+            </button>
+          </div>
+        </div>
+
+        {/* 日報一覧（新しい順） */}
+        {reports.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-4">日報がまだありません</p>
+        ) : (
+          <div className="space-y-2">
+            {reports.map(r => (
+              <div key={r.id} className="p-3 rounded-xl border border-gray-200 bg-white hover:border-teal-200 transition-colors">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <span className="text-sm font-semibold text-gray-900">{r.report_date || '日付未設定'}</span>
+                  {r.worker_name && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                      <User className="h-3 w-3" />{r.worker_name}
+                    </span>
+                  )}
+                  {r.work_hours > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">
+                      <Clock className="h-3 w-3" />{r.work_hours}時間
+                    </span>
+                  )}
+                  <button type="button" onClick={() => handleDeleteReport(r.id)}
+                    className="ml-auto text-gray-300 hover:text-red-500 transition-colors">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{r.work_content}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 現場写真 拡大表示（ライトボックス） */}
+      {lightbox && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <button type="button" onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2">
+            <X className="h-6 w-6" />
+          </button>
+          <div className="max-w-3xl w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
+            <img src={lightbox.stored_name} alt={lightbox.caption || lightbox.original_name}
+              className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain" />
+            <div className="mt-3 flex items-center gap-3 flex-wrap justify-center bg-white/10 backdrop-blur rounded-lg px-4 py-2">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PHOTO_PHASE_STYLE[lightbox.phase] || 'bg-gray-100 text-gray-600'}`}>
+                {lightbox.phase}
+              </span>
+              <select
+                value={lightbox.phase}
+                onChange={e => { handleUpdatePhotoPhase(lightbox, e.target.value); setLightbox({ ...lightbox, phase: e.target.value }) }}
+                className="text-xs bg-white/90 text-gray-700 rounded px-2 py-1 focus:outline-none">
+                {PHOTO_PHASES.map(ph => <option key={ph} value={ph}>{ph}に変更</option>)}
+              </select>
+              <span className="text-xs text-white/80">{lightbox.original_name}</span>
+              <button type="button" onClick={() => handleDeletePhoto(lightbox.id)}
+                className="flex items-center gap-1 text-xs text-red-300 hover:text-red-200">
+                <Trash2 className="h-3.5 w-3.5" />削除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 読み取り中オーバーレイ */}
+      {analyzing && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+            <p className="text-gray-700 font-medium">Claude AIが見積書を読み取っています...</p>
+            <p className="text-xs text-gray-400">品目・数量・単価・金額を抽出中です</p>
+          </div>
+        </div>
+      )}
+
+      {/* 発注確認モーダル */}
+      {orderDraft && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-stretch">
+          <div className="flex-1 flex flex-col bg-white m-4 rounded-2xl overflow-hidden shadow-2xl max-h-full">
+            {/* モーダルヘッダー */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
+              <h2 className="font-bold text-gray-900">見積書 読み取り結果の確認・発注登録</h2>
+              <button onClick={() => setOrderDraft(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* モーダル本体 */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* 左：PDF表示 */}
+              <div className="w-1/2 border-r border-gray-200 flex flex-col">
+                <p className="text-xs text-gray-400 px-3 py-2 border-b border-gray-100 flex-shrink-0">
+                  元の見積書PDF
+                </p>
+                <iframe
+                  src={orderDraft.fileUrl.startsWith('http')
+                    ? orderDraft.fileUrl
+                    : `/api/construction-ledger/${id}/files/${orderDraft.fileId}`}
+                  className="flex-1 w-full"
+                  title="見積書PDF"
+                />
+              </div>
+
+              {/* 右：抽出結果の編集 */}
+              <div className="w-1/2 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* 発注先 */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">発注先（仕入先）</label>
+                    <input
+                      className="input text-sm"
+                      value={orderDraft.supplier}
+                      onChange={e => setOrderDraft(p => p ? { ...p, supplier: e.target.value } : p)}
+                      placeholder="例：たけでん" />
+                  </div>
+
+                  {/* 品目テーブル */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-gray-500 font-medium">品目一覧</label>
+                      <button type="button" onClick={addOrderItem}
+                        className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                        <Plus className="h-3 w-3" />行追加
+                      </button>
+                    </div>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="text-left px-2 py-2 text-gray-500 font-medium w-full">品目名</th>
+                            <th className="text-right px-2 py-2 text-gray-500 font-medium whitespace-nowrap">数量</th>
+                            <th className="text-left px-2 py-2 text-gray-500 font-medium">単位</th>
+                            <th className="text-right px-2 py-2 text-gray-500 font-medium whitespace-nowrap">単価</th>
+                            <th className="text-right px-2 py-2 text-gray-500 font-medium whitespace-nowrap">金額</th>
+                            <th className="w-6"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {orderDraft.items.map(it => (
+                            <tr key={it._key}>
+                              <td className="px-1 py-1">
+                                <input className="w-full text-xs border border-transparent focus:border-gray-300 rounded px-1 py-0.5 focus:outline-none"
+                                  value={it.name} onChange={e => updateOrderItem(it._key, 'name', e.target.value)} placeholder="品目名" />
+                              </td>
+                              <td className="px-1 py-1">
+                                <input type="number" min="0" className="w-16 text-xs text-right border border-transparent focus:border-gray-300 rounded px-1 py-0.5 focus:outline-none"
+                                  value={it.quantity} onChange={e => updateOrderItem(it._key, 'quantity', e.target.value)} />
+                              </td>
+                              <td className="px-1 py-1">
+                                <input className="w-12 text-xs border border-transparent focus:border-gray-300 rounded px-1 py-0.5 focus:outline-none"
+                                  value={it.unit} onChange={e => updateOrderItem(it._key, 'unit', e.target.value)} />
+                              </td>
+                              <td className="px-1 py-1">
+                                <input type="number" min="0" className="w-20 text-xs text-right border border-transparent focus:border-gray-300 rounded px-1 py-0.5 focus:outline-none"
+                                  value={it.unit_price} onChange={e => updateOrderItem(it._key, 'unit_price', e.target.value)} />
+                              </td>
+                              <td className="px-2 py-1 text-right font-medium text-gray-800 whitespace-nowrap">
+                                ¥{(Number(it.amount) || 0).toLocaleString()}
+                              </td>
+                              <td className="px-1 py-1">
+                                <button type="button" onClick={() => removeOrderItem(it._key)}
+                                  className="text-gray-300 hover:text-red-500">
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 合計チェック */}
+                  {(() => {
+                    const calcTotal = orderDraft.items.reduce((s, it) => s + (Number(it.amount) || 0), 0)
+                    const pdfTotal = orderDraft.total
+                    const mismatch = pdfTotal > 0 && Math.abs(calcTotal - pdfTotal) > 1
+                    return (
+                      <div className={`p-3 rounded-lg ${mismatch ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">品目合計（計算値）</span>
+                          <span className="font-semibold">¥{calcTotal.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-gray-600">PDF上の合計金額</span>
+                          <span className="font-semibold">¥{pdfTotal.toLocaleString()}</span>
+                        </div>
+                        {mismatch ? (
+                          <p className="text-xs text-red-600 font-medium mt-1">
+                            ⚠ 合計金額が一致しません。品目を確認してください。
+                          </p>
+                        ) : (
+                          <p className="text-xs text-green-700 font-medium mt-1">✓ 合計金額が一致しています</p>
+                        )}
+                      </div>
+                    )
+                  })()}
+
+                  {/* 備考 */}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">備考</label>
+                    <textarea className="input text-sm" rows={2}
+                      value={orderDraft.notes}
+                      onChange={e => setOrderDraft(p => p ? { ...p, notes: e.target.value } : p)}
+                      placeholder="任意" />
+                  </div>
+                </div>
+
+                {/* フッターボタン */}
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 flex-shrink-0 bg-gray-50">
+                  <button type="button" onClick={() => setOrderDraft(null)}
+                    className="text-sm text-gray-500 hover:text-gray-700 border border-gray-300 px-4 py-2 rounded-lg flex items-center gap-1.5">
+                    <X className="h-4 w-4" />キャンセル
+                  </button>
+                  <button type="button" onClick={handleRegisterOrder} disabled={registeringOrder}
+                    className="btn-primary flex items-center gap-2 text-sm">
+                    {registeringOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {registeringOrder ? '登録中...' : '発注確定'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(editing || saving || saved) && (
         <div className="sticky bottom-4 flex justify-end pointer-events-none">
