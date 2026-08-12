@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { Plus, Search, Trash2, Pencil, Check, X, Download, Upload, Tag, ShoppingCart, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, Check, X, Download, Upload, Tag, ShoppingCart, ChevronDown, ChevronUp, FileSpreadsheet, AlertTriangle } from 'lucide-react'
 
 interface UnitPrice {
   id: number
@@ -58,7 +58,10 @@ export default function UnitPricesPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [showCart, setShowCart] = useState(false)
   const [showOrderModal, setShowOrderModal] = useState(false)
+  const [texasLoading, setTexasLoading] = useState(false)
+  const [texasResult, setTexasResult] = useState<TexasMatchResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const texasInputRef = useRef<HTMLInputElement>(null)
 
   const load = () => {
     setLoading(true)
@@ -183,6 +186,57 @@ export default function UnitPricesPage() {
     }
   }
 
+  // テキサスの発注データCSVを読み込み、既存単価と照合して確認モーダルを開く
+  const handleTexasCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setTexasLoading(true)
+    try {
+      const XLSX = await import('xlsx')
+      // CSVを文字列として読み込む（Shift-JIS/UTF-8どちらも xlsx 側で吸収）
+      const buf = await file.arrayBuffer()
+      const wb = XLSX.read(buf, { type: 'array', codepage: 65001 })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][]
+      // ヘッダー行を探す（品番 or 品名 or 単価 を含む行）
+      let headerIdx = -1
+      for (let i = 0; i < Math.min(8, data.length); i++) {
+        const r = (data[i] as string[]) || []
+        if (r.some(c => /品番|品名|品目|名称|単価|価格/.test(String(c)))) { headerIdx = i; break }
+      }
+      if (headerIdx === -1) { alert('ヘッダー行（品番／品名／単価）が見つかりませんでした'); return }
+      const header = (data[headerIdx] as string[]).map(h => String(h))
+      const findCol = (...keys: string[]) => header.findIndex(h => keys.some(k => h.includes(k)))
+      const pnC = findCol('品番', '品目コード', 'コード')
+      const nmC = findCol('品名', '品目', '名称', '商品名')
+      const prC = findCol('単価', '価格', '金額')
+      if (nmC === -1 && pnC === -1) { alert('品番・品名の列が特定できませんでした'); return }
+
+      const rows: { part_number: string; name: string; price: number }[] = []
+      for (let i = headerIdx + 1; i < data.length; i++) {
+        const row = (data[i] as unknown[]) || []
+        const part_number = pnC >= 0 ? String(row[pnC] ?? '').trim() : ''
+        const name = nmC >= 0 ? String(row[nmC] ?? '').trim() : ''
+        const price = prC >= 0 ? Number(String(row[prC] ?? '').replace(/[,¥￥\s]/g, '')) || 0 : 0
+        if (!name && !part_number) continue
+        rows.push({ part_number, name, price })
+      }
+      if (rows.length === 0) { alert('データ行が見つかりませんでした'); return }
+
+      const res = await fetch('/api/unit-prices/match-texas', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }),
+      })
+      const result = await res.json()
+      if (!result.ok) { alert('照合に失敗しました: ' + (result.error || '')); return }
+      setTexasResult({ fileName: file.name, matched: result.matched, unmatched: result.unmatched })
+    } catch (err) {
+      alert('CSVの読み込みに失敗しました: ' + String(err))
+    } finally {
+      setTexasLoading(false)
+      if (texasInputRef.current) texasInputRef.current.value = ''
+    }
+  }
+
   const exportCSV = () => {
     const header = 'ID,品番,材料名,メーカー,カテゴリ,単位,単価,入数,発注先,通称,備考\n'
     const rows = prices.map(p => {
@@ -286,6 +340,11 @@ export default function UnitPricesPage() {
             <button onClick={() => fileInputRef.current?.click()} disabled={importLoading}
               className="btn-secondary flex items-center gap-1.5 text-sm px-3">
               <Upload className="h-4 w-4" />{importLoading ? '取込中...' : 'xlsx取込'}
+            </button>
+            <input ref={texasInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleTexasCsv} />
+            <button onClick={() => texasInputRef.current?.click()} disabled={texasLoading}
+              className="btn-secondary flex items-center gap-1.5 text-sm px-3">
+              <FileSpreadsheet className="h-4 w-4" />{texasLoading ? '照合中...' : 'テキサスCSVをアップロード'}
             </button>
             <button onClick={exportCSV} className="btn-secondary flex items-center gap-1.5 text-sm px-3">
               <Download className="h-4 w-4" /><span className="hidden sm:inline">CSV出力</span>
@@ -481,6 +540,232 @@ export default function UnitPricesPage() {
         <OrderModal cart={cart} onClose={() => setShowOrderModal(false)}
           onSuccess={() => { setCart([]); setShowOrderModal(false) }} />
       )}
+
+      {/* テキサスCSV照合結果モーダル */}
+      {texasResult && (
+        <TexasImportModal result={texasResult}
+          onClose={() => setTexasResult(null)}
+          onDone={() => { setTexasResult(null); load() }} />
+      )}
+    </div>
+  )
+}
+
+interface TexasMatch {
+  existing_id: number
+  existing_part_number: string
+  existing_name: string
+  existing_maker: string
+  existing_unit: string
+  current_price: number
+  new_price: number
+  diff: number
+  csv_part_number: string
+  csv_name: string
+  match_type: 'exact_part' | 'exact_name' | 'fuzzy_name'
+  score: number
+  low_confidence: boolean
+}
+interface TexasUnmatched {
+  csv_part_number: string
+  csv_name: string
+  new_price: number
+}
+interface TexasMatchResult {
+  fileName: string
+  matched: TexasMatch[]
+  unmatched: TexasUnmatched[]
+}
+
+const MATCH_LABEL: Record<TexasMatch['match_type'], string> = {
+  exact_part: '品番一致',
+  exact_name: '品名一致',
+  fuzzy_name: 'あいまい一致',
+}
+
+function TexasImportModal({ result, onClose, onDone }: {
+  result: TexasMatchResult
+  onClose: () => void
+  onDone: () => void
+}) {
+  // 差額がある行を初期選択（信頼度が低いものは既定でオフ）
+  const [checked, setChecked] = useState<Record<number, boolean>>(() =>
+    Object.fromEntries(result.matched.map(m => [
+      m.existing_id, m.diff !== 0 && !m.low_confidence,
+    ]))
+  )
+  // 未登録品目：新規追加するものを選択（既定オフ）
+  const [newChecked, setNewChecked] = useState<Record<number, boolean>>({})
+  const [saving, setSaving] = useState(false)
+
+  const selectedUpdates = result.matched.filter(m => checked[m.existing_id] && m.diff !== 0)
+  const selectedNew = result.unmatched.filter((_, i) => newChecked[i])
+
+  const apply = async () => {
+    if (selectedUpdates.length === 0 && selectedNew.length === 0) {
+      alert('反映する品目を選択してください'); return
+    }
+    setSaving(true)
+    try {
+      let msg = ''
+      if (selectedUpdates.length > 0) {
+        const res = await fetch('/api/unit-prices/apply-updates', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: 'テキサスCSV', items: selectedUpdates.map(m => ({ id: m.existing_id, new_price: m.new_price })),
+          }),
+        })
+        const r = await res.json()
+        if (!r.ok) throw new Error(r.error || '更新に失敗しました')
+        msg += `${r.updated}件の単価を更新しました。`
+      }
+      if (selectedNew.length > 0) {
+        const res = await fetch('/api/unit-prices/import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: selectedNew.map(u => ({
+              part_number: u.csv_part_number, name: u.csv_name, price: u.new_price,
+              maker: '', unit: '個', quantity_per_pack: '', category: '電気工事材料', order_supplier: 'たけでん',
+            })),
+          }),
+        })
+        const r = await res.json()
+        if (r.ok) msg += `${r.inserted}件を新規登録しました。`
+      }
+      alert(msg || '反映しました')
+      onDone()
+    } catch (err) {
+      alert(String(err))
+    } finally { setSaving(false) }
+  }
+
+  const updatableCount = result.matched.filter(m => m.diff !== 0).length
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b">
+          <div>
+            <h3 className="text-base sm:text-lg font-bold">テキサスCSV 照合結果</h3>
+            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[70vw]">{result.fileName}</p>
+          </div>
+          <button onClick={onClose}><X className="h-5 w-5 text-gray-400" /></button>
+        </div>
+
+        <div className="overflow-y-auto p-4 sm:p-5 space-y-6 flex-1">
+          {/* マッチした品目 */}
+          <section>
+            <h4 className="font-medium text-sm text-gray-700 mb-2">
+              照合できた品目（{result.matched.length}件 / うち単価変更 {updatableCount}件）
+            </h4>
+            {result.matched.length === 0 ? (
+              <p className="text-sm text-gray-400">照合できた品目はありません。</p>
+            ) : (
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-2 py-2 w-8"></th>
+                      <th className="text-left px-2 py-2 text-gray-500">品番／品名</th>
+                      <th className="text-left px-2 py-2 text-gray-500 w-24">判定</th>
+                      <th className="text-right px-2 py-2 text-gray-500 w-24">現在の単価</th>
+                      <th className="text-right px-2 py-2 text-gray-500 w-24">新しい単価</th>
+                      <th className="text-right px-2 py-2 text-gray-500 w-24">差額</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {result.matched.map(m => {
+                      const unchanged = m.diff === 0
+                      return (
+                        <tr key={m.existing_id} className={m.low_confidence ? 'bg-yellow-50' : ''}>
+                          <td className="px-2 py-2 text-center">
+                            <input type="checkbox" disabled={unchanged}
+                              checked={!!checked[m.existing_id]}
+                              onChange={e => setChecked(c => ({ ...c, [m.existing_id]: e.target.checked }))}
+                              className="w-4 h-4 rounded border-gray-300 text-blue-600 disabled:opacity-30" />
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="font-medium text-gray-900">{m.existing_name}</div>
+                            <div className="font-mono text-[11px] text-gray-400">{m.existing_part_number || '品番なし'}</div>
+                            {m.match_type === 'fuzzy_name' && (m.csv_name !== m.existing_name) && (
+                              <div className="text-[11px] text-gray-400">CSV: {m.csv_name}</div>
+                            )}
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] ${
+                              m.low_confidence ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>
+                              {m.low_confidence && <AlertTriangle className="h-3 w-3" />}
+                              {MATCH_LABEL[m.match_type]}
+                              {m.match_type === 'fuzzy_name' && ` ${Math.round(m.score * 100)}%`}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 text-right text-gray-600">{formatCurrency(m.current_price)}</td>
+                          <td className="px-2 py-2 text-right font-semibold text-gray-900">{formatCurrency(m.new_price)}</td>
+                          <td className={`px-2 py-2 text-right font-medium ${
+                            unchanged ? 'text-gray-300' : m.diff > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {unchanged ? '±0' : `${m.diff > 0 ? '+' : ''}${formatCurrency(m.diff)}`}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="text-[11px] text-gray-400 mt-1.5 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3 text-yellow-500" />
+              黄色＝あいまい一致で自動判定が怪しい行。内容を確認してからチェックしてください。
+            </p>
+          </section>
+
+          {/* 未登録品目 */}
+          {result.unmatched.length > 0 && (
+            <section>
+              <h4 className="font-medium text-sm text-gray-700 mb-2">
+                未登録品目（新規品番の可能性 {result.unmatched.length}件）
+              </h4>
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-2 py-2 w-8"></th>
+                      <th className="text-left px-2 py-2 text-gray-500 w-32">品番</th>
+                      <th className="text-left px-2 py-2 text-gray-500">品名</th>
+                      <th className="text-right px-2 py-2 text-gray-500 w-24">単価</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {result.unmatched.map((u, i) => (
+                      <tr key={i}>
+                        <td className="px-2 py-2 text-center">
+                          <input type="checkbox" checked={!!newChecked[i]}
+                            onChange={e => setNewChecked(c => ({ ...c, [i]: e.target.checked }))}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                        </td>
+                        <td className="px-2 py-2 font-mono text-[11px] text-gray-500">{u.csv_part_number || '—'}</td>
+                        <td className="px-2 py-2 text-gray-900">{u.csv_name}</td>
+                        <td className="px-2 py-2 text-right">{formatCurrency(u.new_price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">チェックした品目は「たけでん／電気工事材料」の初期値で新規登録されます。</p>
+            </section>
+          )}
+        </div>
+
+        <div className="p-4 sm:p-5 border-t flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end">
+          <div className="text-xs text-gray-500 flex-1 self-center">
+            更新 {selectedUpdates.length}件 / 新規 {selectedNew.length}件 を反映します
+          </div>
+          <button onClick={onClose} className="btn-secondary">キャンセル</button>
+          <button onClick={apply} disabled={saving}
+            className="btn-primary flex items-center justify-center gap-2">
+            <Check className="h-4 w-4" />{saving ? '反映中...' : '選択した品目を反映する'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
