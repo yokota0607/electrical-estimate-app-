@@ -10,6 +10,7 @@ interface CsvRow {
   part_number?: string
   name?: string
   price?: number
+  maker?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -38,10 +39,11 @@ export async function POST(request: NextRequest) {
     for (const row of rows) {
       const name = String(row.name ?? '').trim()
       const partNumber = String(row.part_number ?? '').trim()
+      const maker = String(row.maker ?? '').trim()
       const newPrice = Number(row.price) || 0
       if (!name && !partNumber) continue
 
-      const result = matchOne({ part_number: partNumber, name }, existing)
+      const result = matchOne({ part_number: partNumber, name, maker }, existing)
 
       if (result.candidate) {
         const current = result.candidate
@@ -56,6 +58,7 @@ export async function POST(request: NextRequest) {
           diff: newPrice - current.price,
           csv_part_number: partNumber,
           csv_name: name,
+          csv_maker: maker,
           match_type: result.matchType,
           score: Math.round(result.score * 100) / 100,
           // 品番一致・品名完全一致以外で信頼度が低いものは要確認（UIで黄色警告）
@@ -65,6 +68,7 @@ export async function POST(request: NextRequest) {
         unmatched.push({
           csv_part_number: partNumber,
           csv_name: name,
+          csv_maker: maker,
           new_price: newPrice,
         })
       }

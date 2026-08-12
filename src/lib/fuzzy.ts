@@ -84,17 +84,21 @@ export const HIGH_CONFIDENCE = 0.85
 export const MATCH_THRESHOLD = 0.6
 
 /**
- * 対象品（品番・品名）を既存レコード群に照合する。
+ * 対象品（品番・品名・メーカー）を既存レコード群に照合する。
  * 1) 品番の完全一致（正規化後）
  * 2) 品名の完全一致（正規化後）
  * 3) 品名のファジー一致（最も類似度の高い候補）
+ *    ※ メーカーが分かる場合は、品名の類似度が拮抗した候補の絞り込みに使う
+ *      （品番が同じでもメーカー違いを区別する参考。品名だけで誤マッチしないよう
+ *       採否の判定は品名の類似度のみで行い、メーカーは順位付けの補助に留める）
  */
-export function matchOne<T extends Matchable>(
-  target: { part_number?: string; name?: string },
+export function matchOne<T extends Matchable & { maker?: string }>(
+  target: { part_number?: string; name?: string; maker?: string },
   existing: T[]
 ): MatchResult<T> {
   const tPart = normalizeText(target.part_number)
   const tName = normalizeText(target.name)
+  const tMaker = normalizeText(target.maker)
 
   // 1) 品番の完全一致
   if (tPart) {
@@ -102,22 +106,28 @@ export function matchOne<T extends Matchable>(
     if (hit) return { candidate: hit, matchType: 'exact_part', score: 1 }
   }
 
-  // 2) 品名の完全一致
+  // 2) 品名の完全一致（同名が複数ある場合はメーカー一致を優先）
   if (tName) {
-    const hit = existing.find(e => normalizeText(e.name) === tName)
-    if (hit) return { candidate: hit, matchType: 'exact_name', score: 1 }
+    const hits = existing.filter(e => normalizeText(e.name) === tName)
+    if (hits.length > 0) {
+      const hit = (tMaker && hits.find(e => normalizeText(e.maker) === tMaker)) || hits[0]
+      return { candidate: hit, matchType: 'exact_name', score: 1 }
+    }
   }
 
-  // 3) 品名のファジー一致（最良候補）
+  // 3) 品名のファジー一致（最良候補。メーカー一致は順位付けの補助）
   if (tName) {
     let best: T | null = null
-    let bestScore = 0
+    let bestName = 0        // 品名の類似度（採否・信頼度の判定に使う）
+    let bestRank = -1       // メーカー一致ボーナスを加えた順位付け用スコア
     for (const e of existing) {
       const s = similarity(target.name, e.name)
-      if (s > bestScore) { bestScore = s; best = e }
+      const makerBonus = tMaker && normalizeText(e.maker) === tMaker ? 0.1 : 0
+      const rank = s + makerBonus
+      if (rank > bestRank) { bestRank = rank; bestName = s; best = e }
     }
-    if (best && bestScore >= MATCH_THRESHOLD) {
-      return { candidate: best, matchType: 'fuzzy_name', score: bestScore }
+    if (best && bestName >= MATCH_THRESHOLD) {
+      return { candidate: best, matchType: 'fuzzy_name', score: bestName }
     }
   }
 

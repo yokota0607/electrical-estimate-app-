@@ -198,29 +198,44 @@ export default function UnitPricesPage() {
       const wb = XLSX.read(buf, { type: 'array', codepage: 65001 })
       const ws = wb.Sheets[wb.SheetNames[0]]
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][]
-      // ヘッダー行を探す（品番 or 品名 or 単価 を含む行）
+      // テキサスCSVは1〜2行目が「期間：」等のヘッダー情報で、列見出し行に品番・品名・単価が並ぶ。
+      // その列見出し行を探す（データは通常3行目以降）。
       let headerIdx = -1
       for (let i = 0; i < Math.min(8, data.length); i++) {
         const r = (data[i] as string[]) || []
-        if (r.some(c => /品番|品名|品目|名称|単価|価格/.test(String(c)))) { headerIdx = i; break }
+        if (r.some(c => /品番/.test(String(c))) && r.some(c => /品名/.test(String(c)))) { headerIdx = i; break }
       }
-      if (headerIdx === -1) { alert('ヘッダー行（品番／品名／単価）が見つかりませんでした'); return }
-      const header = (data[headerIdx] as string[]).map(h => String(h))
-      const findCol = (...keys: string[]) => header.findIndex(h => keys.some(k => h.includes(k)))
-      const pnC = findCol('品番', '品目コード', 'コード')
-      const nmC = findCol('品名', '品目', '名称', '商品名')
-      const prC = findCol('単価', '価格', '金額')
+      if (headerIdx === -1) { alert('列見出し行（品番／品名）が見つかりませんでした'); return }
+      const header = (data[headerIdx] as string[]).map(h => String(h).trim())
+      // 完全一致を優先し、無ければ部分一致で列を特定する（見出しの表記ゆれに対応）
+      const findCol = (exact: string[], partial: string[] = []) => {
+        let idx = header.findIndex(h => exact.includes(h))
+        if (idx === -1 && partial.length) idx = header.findIndex(h => partial.some(k => h.includes(k)))
+        return idx
+      }
+      const pnC = findCol(['品番'], ['品番', '品目コード'])
+      const nmC = findCol(['品名'], ['品名', '品目', '名称', '商品名'])
+      const mkC = findCol(['メーカー名', 'メーカー'], ['メーカー'])
+      // 「単価」（J列）を厳密に取得。「定価」(I列)・「金額」(K列)と取り違えないよう完全一致のみ。
+      const prC = findCol(['単価'])
       if (nmC === -1 && pnC === -1) { alert('品番・品名の列が特定できませんでした'); return }
+      if (prC === -1) { alert('「単価」列が見つかりませんでした（「定価」ではなく「単価」列が必要です）'); return }
 
-      const rows: { part_number: string; name: string; price: number }[] = []
+      // 発注（売上）データは同じ品番が複数行に登場するため、品番＋メーカー単位で
+      // 集約し、ファイル内で最後（＝通常は最新日付）に出た単価を採用する。
+      type Row = { part_number: string; name: string; price: number; maker: string }
+      const dedup = new Map<string, Row>()
       for (let i = headerIdx + 1; i < data.length; i++) {
         const row = (data[i] as unknown[]) || []
         const part_number = pnC >= 0 ? String(row[pnC] ?? '').trim() : ''
         const name = nmC >= 0 ? String(row[nmC] ?? '').trim() : ''
-        const price = prC >= 0 ? Number(String(row[prC] ?? '').replace(/[,¥￥\s]/g, '')) || 0 : 0
+        const maker = mkC >= 0 ? String(row[mkC] ?? '').trim() : ''
+        const price = Number(String(row[prC] ?? '').replace(/[,¥￥\s]/g, '')) || 0
         if (!name && !part_number) continue
-        rows.push({ part_number, name, price })
+        const key = (part_number || name) + '' + maker
+        dedup.set(key, { part_number, name, price, maker }) // 後勝ち（最新単価を優先）
       }
+      const rows = Array.from(dedup.values())
       if (rows.length === 0) { alert('データ行が見つかりませんでした'); return }
 
       const res = await fetch('/api/unit-prices/match-texas', {
@@ -562,6 +577,7 @@ interface TexasMatch {
   diff: number
   csv_part_number: string
   csv_name: string
+  csv_maker: string
   match_type: 'exact_part' | 'exact_name' | 'fuzzy_name'
   score: number
   low_confidence: boolean
@@ -569,6 +585,7 @@ interface TexasMatch {
 interface TexasUnmatched {
   csv_part_number: string
   csv_name: string
+  csv_maker: string
   new_price: number
 }
 interface TexasMatchResult {
@@ -625,7 +642,7 @@ function TexasImportModal({ result, onClose, onDone }: {
           body: JSON.stringify({
             items: selectedNew.map(u => ({
               part_number: u.csv_part_number, name: u.csv_name, price: u.new_price,
-              maker: '', unit: '個', quantity_per_pack: '', category: '電気工事材料', order_supplier: 'たけでん',
+              maker: u.csv_maker || '', unit: '個', quantity_per_pack: '', category: '電気工事材料', order_supplier: 'たけでん',
             })),
           }),
         })
@@ -731,6 +748,7 @@ function TexasImportModal({ result, onClose, onDone }: {
                       <th className="px-2 py-2 w-8"></th>
                       <th className="text-left px-2 py-2 text-gray-500 w-32">品番</th>
                       <th className="text-left px-2 py-2 text-gray-500">品名</th>
+                      <th className="text-left px-2 py-2 text-gray-500 w-28">メーカー</th>
                       <th className="text-right px-2 py-2 text-gray-500 w-24">単価</th>
                     </tr>
                   </thead>
@@ -744,6 +762,7 @@ function TexasImportModal({ result, onClose, onDone }: {
                         </td>
                         <td className="px-2 py-2 font-mono text-[11px] text-gray-500">{u.csv_part_number || '—'}</td>
                         <td className="px-2 py-2 text-gray-900">{u.csv_name}</td>
+                        <td className="px-2 py-2 text-gray-500">{u.csv_maker || '—'}</td>
                         <td className="px-2 py-2 text-right">{formatCurrency(u.new_price)}</td>
                       </tr>
                     ))}
