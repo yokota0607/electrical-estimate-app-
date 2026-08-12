@@ -12,9 +12,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const body = await request.json()
     const phaseRaw = body.phase
     const phase = PHASES.includes(phaseRaw) ? phaseRaw : '施工前'
-    const caption = body.caption ?? ''
+    const description = body.description ?? ''
     const [row] = await sql`
-      UPDATE site_photos SET phase = ${phase}, caption = ${caption} WHERE id = ${Number(pid)} RETURNING *
+      UPDATE site_photos SET phase = ${phase}, description = ${description} WHERE id = ${Number(pid)} RETURNING *
     `
     return NextResponse.json(row)
   } catch (error) {

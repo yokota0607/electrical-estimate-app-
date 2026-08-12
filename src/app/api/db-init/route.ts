@@ -174,6 +174,8 @@ export async function POST() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `
+    // 現場写真の詳細メモ（任意入力）
+    await sql`ALTER TABLE site_photos ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`
     await sql`
       CREATE TABLE IF NOT EXISTS daily_reports (
         id SERIAL PRIMARY KEY,

@@ -66,10 +66,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const phaseRaw = (formData.get('phase') as string) || '施工前'
     const phase = PHASES.includes(phaseRaw) ? phaseRaw : '施工前'
     const caption = (formData.get('caption') as string) || ''
+    const description = (formData.get('description') as string) || ''
 
     const [row] = await sql`
-      INSERT INTO site_photos (ledger_id, stored_name, original_name, file_size, mime_type, uploaded_by, phase, caption)
-      VALUES (${Number(id)}, ${storedUrl}, ${file.name}, ${file.size}, ${file.type || ''}, ${user?.displayName || ''}, ${phase}, ${caption})
+      INSERT INTO site_photos (ledger_id, stored_name, original_name, file_size, mime_type, uploaded_by, phase, caption, description)
+      VALUES (${Number(id)}, ${storedUrl}, ${file.name}, ${file.size}, ${file.type || ''}, ${user?.displayName || ''}, ${phase}, ${caption}, ${description})
       RETURNING *
     `
     return NextResponse.json(row, { status: 201 })

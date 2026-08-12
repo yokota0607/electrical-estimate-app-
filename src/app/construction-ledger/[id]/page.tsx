@@ -101,6 +101,7 @@ interface SitePhoto {
   mime_type: string
   phase: string
   caption: string
+  description: string
   uploaded_by: string
   created_at: string
 }
@@ -271,6 +272,7 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
   const [photos, setPhotos] = useState<SitePhoto[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoPhase, setPhotoPhase] = useState('施工前')
+  const [photoDescription, setPhotoDescription] = useState('')
   const [photoFilter, setPhotoFilter] = useState('すべて')
   const [lightbox, setLightbox] = useState<SitePhoto | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -616,21 +618,25 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
         const fd = new FormData()
         fd.append('file', file)
         fd.append('phase', photoPhase)
+        fd.append('description', photoDescription)
         const res = await fetch(`/api/construction-ledger/${id}/photos`, { method: 'POST', body: fd })
         if (!res.ok) { alert(`「${file.name}」のアップロードに失敗しました`) }
       }
+      setPhotoDescription('')
       await loadPhotos()
     } finally {
       setUploadingPhoto(false)
     }
   }
 
-  const handleUpdatePhotoPhase = async (photo: SitePhoto, phase: string) => {
-    setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, phase } : p))
+  const handleUpdatePhotoMeta = async (photo: SitePhoto, changes: Partial<Pick<SitePhoto, 'phase' | 'description'>>) => {
+    const updated = { ...photo, ...changes }
+    setPhotos(prev => prev.map(p => p.id === photo.id ? updated : p))
+    setLightbox(prev => prev && prev.id === photo.id ? updated : prev)
     await fetch(`/api/construction-ledger/${id}/photos/${photo.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phase, caption: photo.caption }),
+      body: JSON.stringify({ phase: updated.phase, description: updated.description }),
     })
   }
 
@@ -1627,8 +1633,8 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
 
         {/* アップロード操作 */}
         <div className="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl">
-          <p className="text-xs text-gray-500 mb-2">タグを選んで写真を追加（複数選択・撮影可）</p>
-          <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs text-gray-500 mb-2">タグ・詳細メモを入力して写真を追加（複数選択・撮影可）</p>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             {PHOTO_PHASES.map(ph => (
               <button key={ph} type="button" onClick={() => setPhotoPhase(ph)}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
@@ -1639,8 +1645,16 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
                 {ph}
               </button>
             ))}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={photoDescription}
+              onChange={e => setPhotoDescription(e.target.value)}
+              placeholder="詳細メモ（任意）例：LEDベース照明の設置完了"
+              className="flex-1 text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400" />
             <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}
-              className="ml-auto flex items-center gap-1 text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-50">
+              className="flex items-center justify-center gap-1 text-xs bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:bg-rose-700 transition-colors disabled:opacity-50 whitespace-nowrap">
               {uploadingPhoto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               {uploadingPhoto ? 'アップロード中...' : `「${photoPhase}」で写真を追加`}
             </button>
@@ -1681,13 +1695,18 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
             {photos
               .filter(p => photoFilter === 'すべて' || p.phase === photoFilter)
               .map(p => (
-                <button key={p.id} type="button" onClick={() => setLightbox(p)}
+                <button key={p.id} type="button" onClick={() => setLightbox(p)} title={p.description || ''}
                   className="group relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 focus:outline-none focus:ring-2 focus:ring-rose-400">
-                  <img src={p.stored_name} alt={p.caption || p.original_name}
+                  <img src={p.stored_name} alt={p.description || p.original_name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                   <span className={`absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${PHOTO_PHASE_STYLE[p.phase] || 'bg-gray-100 text-gray-600'}`}>
                     {p.phase}
                   </span>
+                  {p.description && (
+                    <span className="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[10px] leading-tight px-1.5 py-1 text-left line-clamp-2">
+                      {p.description}
+                    </span>
+                  )}
                 </button>
               ))}
           </div>
@@ -1910,23 +1929,35 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
             <X className="h-6 w-6" />
           </button>
           <div className="max-w-3xl w-full flex flex-col items-center" onClick={e => e.stopPropagation()}>
-            <img src={lightbox.stored_name} alt={lightbox.caption || lightbox.original_name}
-              className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain" />
-            <div className="mt-3 flex items-center gap-3 flex-wrap justify-center bg-white/10 backdrop-blur rounded-lg px-4 py-2">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PHOTO_PHASE_STYLE[lightbox.phase] || 'bg-gray-100 text-gray-600'}`}>
-                {lightbox.phase}
-              </span>
-              <select
-                value={lightbox.phase}
-                onChange={e => { handleUpdatePhotoPhase(lightbox, e.target.value); setLightbox({ ...lightbox, phase: e.target.value }) }}
-                className="text-xs bg-white/90 text-gray-700 rounded px-2 py-1 focus:outline-none">
-                {PHOTO_PHASES.map(ph => <option key={ph} value={ph}>{ph}に変更</option>)}
-              </select>
-              <span className="text-xs text-white/80">{lightbox.original_name}</span>
-              <button type="button" onClick={() => handleDeletePhoto(lightbox.id)}
-                className="flex items-center gap-1 text-xs text-red-300 hover:text-red-200">
-                <Trash2 className="h-3.5 w-3.5" />削除
-              </button>
+            <img src={lightbox.stored_name} alt={lightbox.description || lightbox.original_name}
+              className="max-h-[65vh] w-auto max-w-full rounded-lg object-contain" />
+            <div className="mt-3 w-full max-w-xl bg-white/10 backdrop-blur rounded-lg px-4 py-3 space-y-2">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PHOTO_PHASE_STYLE[lightbox.phase] || 'bg-gray-100 text-gray-600'}`}>
+                  {lightbox.phase}
+                </span>
+                <select
+                  value={lightbox.phase}
+                  onChange={e => handleUpdatePhotoMeta(lightbox, { phase: e.target.value })}
+                  className="text-xs bg-white/90 text-gray-700 rounded px-2 py-1 focus:outline-none">
+                  {PHOTO_PHASES.map(ph => <option key={ph} value={ph}>{ph}に変更</option>)}
+                </select>
+                <span className="text-xs text-white/70 truncate flex-1 min-w-0">{lightbox.original_name}</span>
+                <button type="button" onClick={() => handleDeletePhoto(lightbox.id)}
+                  className="flex items-center gap-1 text-xs text-red-300 hover:text-red-200">
+                  <Trash2 className="h-3.5 w-3.5" />削除
+                </button>
+              </div>
+              <div>
+                <label className="block text-[11px] text-white/70 mb-1">詳細メモ（自動保存）</label>
+                <textarea
+                  key={lightbox.id}
+                  defaultValue={lightbox.description || ''}
+                  rows={2}
+                  placeholder="詳細メモを入力（例：電気配線の状況）"
+                  onBlur={e => { if (e.target.value !== (lightbox.description || '')) handleUpdatePhotoMeta(lightbox, { description: e.target.value }) }}
+                  className="w-full text-sm bg-white/90 text-gray-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-400 resize-none" />
+              </div>
             </div>
           </div>
         </div>
