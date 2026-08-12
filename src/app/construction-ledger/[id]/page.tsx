@@ -8,6 +8,7 @@ import {
   Paperclip, Download, FileText, Image as ImageIcon, File, Building2, ClipboardList, ShoppingCart, ChevronRight
 } from 'lucide-react'
 import CurrencyInput from '@/components/CurrencyInput'
+import TaxCurrencyInput from '@/components/TaxCurrencyInput'
 
 interface LedgerDetail {
   id: number
@@ -541,28 +542,28 @@ export default function ConstructionLedgerDetailPage({ params }: { params: Promi
             </div>
           </div>
           <div>
-            <label className="label">総額（円）</label>
-            <CurrencyInput className="input text-right" value={form.total_amount ?? 0} onChange={v => set('total_amount', v)} />
+            <label className="label">総額（税抜）</label>
+            <TaxCurrencyInput className="input text-right" value={form.total_amount ?? 0} onChange={v => set('total_amount', v)} />
           </div>
           <div>
-            <label className="label">材料費（円）</label>
-            <CurrencyInput className="input text-right" value={form.material_cost ?? 0} onChange={v => set('material_cost', v)} />
+            <label className="label">材料費（税抜）</label>
+            <TaxCurrencyInput className="input text-right" value={form.material_cost ?? 0} onChange={v => set('material_cost', v)} />
           </div>
           <div>
-            <label className="label">労務費（円）</label>
-            <CurrencyInput className="input text-right" value={form.labor_cost ?? 0} onChange={v => set('labor_cost', v)} />
+            <label className="label">労務費（税抜）</label>
+            <TaxCurrencyInput className="input text-right" value={form.labor_cost ?? 0} onChange={v => set('labor_cost', v)} />
           </div>
           <div>
-            <label className="label">外注費（円）</label>
-            <CurrencyInput className="input text-right" value={form.subcontract_cost ?? 0} onChange={v => set('subcontract_cost', v)} />
+            <label className="label">外注費（税抜）</label>
+            <TaxCurrencyInput className="input text-right" value={form.subcontract_cost ?? 0} onChange={v => set('subcontract_cost', v)} />
           </div>
           <div>
-            <label className="label">現場雑費（円）</label>
-            <CurrencyInput className="input text-right" value={form.site_misc_cost ?? 0} onChange={v => set('site_misc_cost', v)} />
+            <label className="label">現場雑費（税抜）</label>
+            <TaxCurrencyInput className="input text-right" value={form.site_misc_cost ?? 0} onChange={v => set('site_misc_cost', v)} />
           </div>
           <div>
-            <label className="label">購入費（円）</label>
-            <CurrencyInput className="input text-right" value={form.purchase_cost ?? 0} onChange={v => set('purchase_cost', v)} />
+            <label className="label">購入費（税抜）</label>
+            <TaxCurrencyInput className="input text-right" value={form.purchase_cost ?? 0} onChange={v => set('purchase_cost', v)} />
           </div>
         </div>
 
