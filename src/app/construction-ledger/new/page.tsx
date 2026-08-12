@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Loader2, Link2, Upload, FileText, Image, CheckCircle, AlertCircle, X } from 'lucide-react'
 import CurrencyInput from '@/components/CurrencyInput'
+import TaxCurrencyInput from '@/components/TaxCurrencyInput'
 
 interface Estimate {
   id: number
@@ -387,32 +388,32 @@ export default function NewConstructionLedgerPage() {
           <h3 className="font-semibold text-gray-900 text-sm mb-4">金額情報</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="label">契約金額（円）</label>
+              <label className="label">契約金額（税抜）</label>
               <CurrencyInput className="input text-right" value={form.contract_amount} onChange={v => set('contract_amount', String(v))} />
             </div>
             <div>
-              <label className="label">総額（円）</label>
-              <CurrencyInput className="input text-right" value={form.total_amount} onChange={v => set('total_amount', String(v))} />
+              <label className="label">総額（税抜）</label>
+              <TaxCurrencyInput className="input text-right" value={form.total_amount} onChange={v => set('total_amount', String(v))} />
             </div>
             <div>
-              <label className="label">材料費（円）</label>
-              <CurrencyInput className="input text-right" value={form.material_cost} onChange={v => set('material_cost', String(v))} />
+              <label className="label">材料費（税抜）</label>
+              <TaxCurrencyInput className="input text-right" value={form.material_cost} onChange={v => set('material_cost', String(v))} />
             </div>
             <div>
-              <label className="label">労務費（円）</label>
-              <CurrencyInput className="input text-right" value={form.labor_cost} onChange={v => set('labor_cost', String(v))} />
+              <label className="label">労務費（税抜）</label>
+              <TaxCurrencyInput className="input text-right" value={form.labor_cost} onChange={v => set('labor_cost', String(v))} />
             </div>
             <div>
-              <label className="label">外注費（円）</label>
-              <CurrencyInput className="input text-right" value={form.subcontract_cost} onChange={v => set('subcontract_cost', String(v))} />
+              <label className="label">外注費（税抜）</label>
+              <TaxCurrencyInput className="input text-right" value={form.subcontract_cost} onChange={v => set('subcontract_cost', String(v))} />
             </div>
             <div>
-              <label className="label">現場雑費（円）</label>
-              <CurrencyInput className="input text-right" value={form.site_misc_cost} onChange={v => set('site_misc_cost', String(v))} />
+              <label className="label">現場雑費（税抜）</label>
+              <TaxCurrencyInput className="input text-right" value={form.site_misc_cost} onChange={v => set('site_misc_cost', String(v))} />
             </div>
             <div>
-              <label className="label">購入費（円）</label>
-              <CurrencyInput className="input text-right" value={form.purchase_cost} onChange={v => set('purchase_cost', String(v))} />
+              <label className="label">購入費（税抜）</label>
+              <TaxCurrencyInput className="input text-right" value={form.purchase_cost} onChange={v => set('purchase_cost', String(v))} />
             </div>
           </div>
 
