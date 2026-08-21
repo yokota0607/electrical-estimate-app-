@@ -49,6 +49,36 @@ const TX_COLOR: Record<string, string> = {
 
 interface ScannedCard extends CardForm { selected: boolean }
 
+// ── 会社名の五十音順ソート ────────────────────────────────────────────────────
+// 日本語の照合に対応した Collator を1つ生成して使い回す
+const jaCollator = new Intl.Collator('ja')
+
+// 法人格（株式会社・㈱ など）。前株／後株で位置が違うと並びが不自然になるため、
+// 比較用のキーからは除去してから五十音順で比較する。
+const LEGAL_ENTITY = new RegExp(
+  [
+    '株式会社', '有限会社', '合同会社', '合資会社', '合名会社',
+    '一般社団法人', '一般財団法人', '公益社団法人', '公益財団法人',
+    '社会福祉法人', '医療法人', '学校法人', '宗教法人', '独立行政法人',
+    '特定非営利活動法人', 'ＮＰＯ法人', 'NPO法人',
+    '[(（][株有合資名財社医学][)）]', // (株)（有）（社）など
+    '㈱', '㈲', '㈳', '㈴', '㈵', '㈶', '㈷',
+  ].join('|'),
+  'g',
+)
+
+// 会社名 → 比較用キー（法人格・空白を除去）
+function companyKey(name: string): string {
+  return (name || '').replace(LEGAL_ENTITY, '').replace(/[\s　]/g, '')
+}
+
+// 会社名（五十音順）→ 同一会社なら氏名フリガナ順
+function compareCards(a: BusinessCard, b: BusinessCard): number {
+  const cmp = jaCollator.compare(companyKey(a.company), companyKey(b.company))
+  if (cmp !== 0) return cmp
+  return jaCollator.compare(a.name_kana || a.name, b.name_kana || b.name)
+}
+
 // ── 汎用タグ入力 ──────────────────────────────────────────────────────────────
 function TagInput({ value, onChange, placeholder }: {
   value: string[]
@@ -411,11 +441,7 @@ export default function BusinessCardsPage() {
       (Array.isArray(c.qualifications) && c.qualifications.some(v => v.toLowerCase().includes(q))) ||
       (Array.isArray(c.industry) && c.industry.some(v => v.toLowerCase().includes(q)))
     )
-  }).sort((a, b) => {
-    const cmp = a.company.localeCompare(b.company, 'ja')
-    if (cmp !== 0) return cmp
-    return (a.name_kana || a.name).localeCompare(b.name_kana || b.name, 'ja')
-  })
+  }).sort(compareCards)
 
   // 業種グループ分け
   const groups = (() => {
@@ -433,11 +459,7 @@ export default function BusinessCardsPage() {
       .sort(([a], [b]) => a.localeCompare(b, 'ja'))
       .map(([label, items]) => ({
         label,
-        items: items.sort((a, b) => {
-          const cmp = a.company.localeCompare(b.company, 'ja')
-          if (cmp !== 0) return cmp
-          return (a.name_kana || a.name).localeCompare(b.name_kana || b.name, 'ja')
-        }),
+        items: items.sort(compareCards),
       }))
     if (none.length > 0) result.push({ label: '未分類', items: none })
     return result
