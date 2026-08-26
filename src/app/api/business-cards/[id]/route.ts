@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const {
       name, name_kana, company, department, title,
       email, phone, mobile, fax, postal_code, address, website,
-      qualifications, industry, transaction_type, notes,
+      qualifications, industry, transaction_type, notes, verified,
     } = body
 
     const existing = await sql`SELECT id FROM business_cards WHERE id = ${id}`
@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           fax=${fax || ''}, postal_code=${postal_code || ''}, address=${address || ''}, website=${website || ''},
           qualifications=${JSON.stringify(Array.isArray(qualifications) ? qualifications : [])},
           industry=${JSON.stringify(Array.isArray(industry) ? industry : [])},
-          transaction_type=${transaction_type || ''}, notes=${notes || ''}, updated_at=NOW()
+          transaction_type=${transaction_type || ''}, notes=${notes || ''}, verified=${verified ?? false}, updated_at=NOW()
       WHERE id=${id}
       RETURNING *
     `

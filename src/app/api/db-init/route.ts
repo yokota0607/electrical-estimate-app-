@@ -83,6 +83,8 @@ export async function POST() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `
+    // 名刺のファイリング原本と照合済みかを示すフラグ
+    await sql`ALTER TABLE business_cards ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false`
     await sql`
       CREATE TABLE IF NOT EXISTS construction_ledger (
         id SERIAL PRIMARY KEY,

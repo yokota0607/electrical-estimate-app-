@@ -26,6 +26,7 @@ interface BusinessCard {
   industry: string[]
   transaction_type: string
   notes: string
+  verified: boolean
   created_at: string
   updated_at: string
 }
@@ -35,7 +36,7 @@ type CardForm = Omit<BusinessCard, 'id' | 'created_at' | 'updated_at'>
 const BLANK: CardForm = {
   name: '', name_kana: '', company: '', department: '', title: '',
   email: '', phone: '', mobile: '', fax: '', postal_code: '', address: '', website: '',
-  qualifications: [], industry: [], transaction_type: '', notes: '',
+  qualifications: [], industry: [], transaction_type: '', notes: '', verified: false,
 }
 
 const TRANSACTION_TYPES = ['元請け', '下請け', '取引先', 'その他']
@@ -329,6 +330,7 @@ export default function BusinessCardsPage() {
   const [txFilter, setTxFilter] = useState<string | null>(null)
   const [qualFilter, setQualFilter] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [showUnverifiedOnly, setShowUnverifiedOnly] = useState(false)
   const [groupByIndustry, setGroupByIndustry] = useState(false)
   const [panel, setPanel] = useState<null | 'manual' | 'scan' | 'csv' | 'industry-settings'>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -424,6 +426,7 @@ export default function BusinessCardsPage() {
 
   // フィルター処理 + 会社名50音順ソート
   const filtered = cards.filter(c => {
+    if (showUnverifiedOnly && c.verified) return false
     if (industryFilter && !(Array.isArray(c.industry) && c.industry.includes(industryFilter))) return false
     if (txFilter && c.transaction_type !== txFilter) return false
     if (qualFilter && !(Array.isArray(c.qualifications) && c.qualifications.includes(qualFilter))) return false
@@ -482,6 +485,7 @@ export default function BusinessCardsPage() {
       industry: Array.isArray(c.industry) ? c.industry : [],
       transaction_type: c.transaction_type || '',
       notes: c.notes,
+      verified: c.verified ?? false,
     })
     setPanel('manual')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -501,6 +505,16 @@ export default function BusinessCardsPage() {
     if (!confirm(`「${name || '(名前なし)'}」を削除しますか？`)) return
     await fetch(`/api/business-cards/${id}`, { method: 'DELETE' })
     load()
+  }
+
+  // 原本と照合済みフラグを反転して即保存
+  const toggleVerified = async (c: BusinessCard) => {
+    const res = await fetch(`/api/business-cards/${c.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...c, verified: !c.verified }),
+    })
+    if (res.ok) load()
   }
 
   const handleScan = async () => {
@@ -587,7 +601,14 @@ export default function BusinessCardsPage() {
   const renderRow = (c: BusinessCard) => (
     <div key={c.id} className="hidden sm:grid grid-cols-12 px-4 py-3 items-start hover:bg-gray-50 transition-colors group">
       <div className="col-span-3 min-w-0">
-        <p className="font-medium text-gray-900 truncate">{c.name || '—'}</p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="font-medium text-gray-900 truncate">{c.name || '—'}</p>
+          {c.verified && (
+            <span className="inline-flex items-center gap-0.5 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full border border-green-200 flex-shrink-0">
+              <Check className="h-3 w-3" />確認済み
+            </span>
+          )}
+        </div>
         {c.name_kana && <p className="text-xs text-gray-400 truncate">{c.name_kana}</p>}
         {c.title && <p className="text-xs text-gray-500 truncate">{c.title}</p>}
         <div className="flex flex-wrap gap-1 mt-1">
@@ -649,6 +670,11 @@ export default function BusinessCardsPage() {
         )}
       </div>
       <div className="col-span-1 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={() => toggleVerified(c)}
+          className={`p-1.5 rounded ${c.verified ? 'text-green-600' : 'text-gray-300 hover:text-green-600'}`}
+          title={c.verified ? '確認済みを解除' : '確認済みにする'}>
+          <Check className="h-4 w-4" />
+        </button>
         <button onClick={() => startEdit(c)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded">
           <Pencil className="h-4 w-4" />
         </button>
@@ -665,13 +691,25 @@ export default function BusinessCardsPage() {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="font-medium text-gray-900 truncate text-sm">{c.name || '—'}</p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="font-medium text-gray-900 truncate text-sm">{c.name || '—'}</p>
+              {c.verified && (
+                <span className="inline-flex items-center gap-0.5 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full border border-green-200 flex-shrink-0">
+                  <Check className="h-3 w-3" />確認済み
+                </span>
+              )}
+            </div>
             {c.company && <p className="text-xs text-gray-500 truncate flex items-center gap-1 mt-0.5">
               <Building2 className="h-3 w-3 flex-shrink-0" />{c.company}
             </p>}
             {c.title && <p className="text-xs text-gray-400 truncate">{c.title}</p>}
           </div>
           <div className="flex gap-1 flex-shrink-0">
+            <button onClick={() => toggleVerified(c)}
+              className={`p-1.5 rounded ${c.verified ? 'text-green-600' : 'text-gray-300 hover:text-green-600'}`}
+              title={c.verified ? '確認済みを解除' : '確認済みにする'}>
+              <Check className="h-4 w-4" />
+            </button>
             <button onClick={() => startEdit(c)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded">
               <Pencil className="h-4 w-4" />
             </button>
@@ -1074,6 +1112,12 @@ export default function BusinessCardsPage() {
             </span>
           )}
         </button>
+        <button onClick={() => setShowUnverifiedOnly(v => !v)}
+          className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors whitespace-nowrap ${
+            showUnverifiedOnly ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:border-green-400 hover:text-green-700'
+          }`}>
+          <Check className="h-4 w-4" />未確認のみ
+        </button>
         <button onClick={() => setGroupByIndustry(g => !g)}
           className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors whitespace-nowrap ${
             groupByIndustry ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
@@ -1082,6 +1126,11 @@ export default function BusinessCardsPage() {
           {groupByIndustry ? 'グループ表示中' : 'グループ表示'}
         </button>
       </div>
+
+      {/* 確認済み進捗 */}
+      <p className="text-xs text-gray-500 mb-3">
+        確認済み <span className="font-semibold text-green-700">{cards.filter(c => c.verified).length}</span> / {cards.length}件
+      </p>
 
       {/* 絞り込みパネル */}
       {showFilters && (
@@ -1170,7 +1219,7 @@ export default function BusinessCardsPage() {
           <div className="p-12 text-center text-gray-400">
             <Contact className="h-12 w-12 mx-auto mb-3 opacity-20" />
             <p className="font-medium">名刺がありません</p>
-            {(search || industryFilter || txFilter || qualFilter) ? (
+            {(search || industryFilter || txFilter || qualFilter || showUnverifiedOnly) ? (
               <p className="text-sm mt-1">検索・絞り込み条件を変更してください</p>
             ) : (
               <div className="flex gap-2 justify-center mt-3 flex-wrap">
