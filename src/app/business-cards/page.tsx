@@ -5,7 +5,7 @@ import {
   Contact, Plus, Search, Trash2, Pencil, Check, X,
   ScanLine, Upload, Phone, Mail, Building2, MapPin,
   Globe, ChevronDown, ChevronUp, Loader2, Layers, LayoutList,
-  FileText, Printer, Filter, Settings, Tag,
+  FileText, Printer, Filter, Settings, Tag, Copy,
 } from 'lucide-react'
 
 interface BusinessCard {
@@ -331,7 +331,7 @@ export default function BusinessCardsPage() {
   const [qualFilter, setQualFilter] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [showUnverifiedOnly, setShowUnverifiedOnly] = useState(false)
-  const [groupByIndustry, setGroupByIndustry] = useState(false)
+  const [groupMode, setGroupMode] = useState<'none' | 'industry' | 'company'>('none')
   const [panel, setPanel] = useState<null | 'manual' | 'scan' | 'csv' | 'industry-settings'>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<CardForm>(BLANK)
@@ -468,6 +468,20 @@ export default function BusinessCardsPage() {
     return result
   })()
 
+  // 会社ごとのグループ分け（同じ会社の名刺をまとめて確認・編集するため）
+  const companyGroups = (() => {
+    const map = new Map<string, { label: string; items: BusinessCard[] }>()
+    for (const c of filtered) {
+      const key = companyKey(c.company) || '\u0000__none__'
+      const label = c.company || '(会社名未入力)'
+      if (!map.has(key)) map.set(key, { label, items: [] })
+      map.get(key)!.items.push(c)
+    }
+    return Array.from(map.values())
+      .sort((a, b) => jaCollator.compare(companyKey(a.label), companyKey(b.label)))
+      .map(g => ({ label: g.label, items: g.items.sort(compareCards) }))
+  })()
+
   const togglePanel = (target: 'manual' | 'scan') => {
     if (panel === target) { setPanel(null); return }
     setPanel(target)
@@ -486,6 +500,24 @@ export default function BusinessCardsPage() {
       transaction_type: c.transaction_type || '',
       notes: c.notes,
       verified: c.verified ?? false,
+    })
+    setPanel('manual')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // 同じ会社の名刺をベースに新規作成（会社名・住所・電話番号等は引き継ぎ、氏名等の個人情報は空にする）
+  const startCopy = (c: BusinessCard) => {
+    setEditingId(null)
+    setForm({
+      name: '', name_kana: '',
+      company: c.company, department: c.department || '', title: '',
+      email: '', phone: c.phone, mobile: '', fax: c.fax || '',
+      postal_code: c.postal_code || '', address: c.address, website: c.website,
+      qualifications: [],
+      industry: Array.isArray(c.industry) ? c.industry : [],
+      transaction_type: c.transaction_type || '',
+      notes: '',
+      verified: false,
     })
     setPanel('manual')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -675,6 +707,10 @@ export default function BusinessCardsPage() {
           title={c.verified ? '確認済みを解除' : '確認済みにする'}>
           <Check className="h-4 w-4" />
         </button>
+        <button onClick={() => startCopy(c)} className="p-1.5 text-gray-400 hover:text-green-600 rounded"
+          title="この会社の情報を引き継いで新規作成">
+          <Copy className="h-4 w-4" />
+        </button>
         <button onClick={() => startEdit(c)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded">
           <Pencil className="h-4 w-4" />
         </button>
@@ -709,6 +745,10 @@ export default function BusinessCardsPage() {
               className={`p-1.5 rounded ${c.verified ? 'text-green-600' : 'text-gray-300 hover:text-green-600'}`}
               title={c.verified ? '確認済みを解除' : '確認済みにする'}>
               <Check className="h-4 w-4" />
+            </button>
+            <button onClick={() => startCopy(c)} className="p-1.5 text-gray-400 hover:text-green-600 rounded"
+              title="この会社の情報を引き継いで新規作成">
+              <Copy className="h-4 w-4" />
             </button>
             <button onClick={() => startEdit(c)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded">
               <Pencil className="h-4 w-4" />
@@ -1118,12 +1158,19 @@ export default function BusinessCardsPage() {
           }`}>
           <Check className="h-4 w-4" />未確認のみ
         </button>
-        <button onClick={() => setGroupByIndustry(g => !g)}
+        <button onClick={() => setGroupMode(m => m === 'industry' ? 'none' : 'industry')}
           className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors whitespace-nowrap ${
-            groupByIndustry ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+            groupMode === 'industry' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
           }`}>
-          {groupByIndustry ? <Layers className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
-          {groupByIndustry ? 'グループ表示中' : 'グループ表示'}
+          {groupMode === 'industry' ? <Layers className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
+          業種でグループ
+        </button>
+        <button onClick={() => setGroupMode(m => m === 'company' ? 'none' : 'company')}
+          className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg border transition-colors whitespace-nowrap ${
+            groupMode === 'company' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+          }`}>
+          {groupMode === 'company' ? <Layers className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
+          会社でグループ
         </button>
       </div>
 
@@ -1235,7 +1282,7 @@ export default function BusinessCardsPage() {
               </div>
             )}
           </div>
-        ) : groupByIndustry ? (
+        ) : groupMode === 'industry' ? (
           <div>
             {groups.map(({ label, items }) => (
               <div key={label}>
@@ -1243,6 +1290,32 @@ export default function BusinessCardsPage() {
                   <span className={`w-2 h-2 rounded-full ${label === '未分類' ? 'bg-gray-300' : 'bg-green-500'}`} />
                   <span className="text-sm font-semibold text-gray-700">{label}</span>
                   <span className="text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded-full">{items.length}件</span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {tableHeader}
+                  {items.map(c => (
+                    <div key={c.id}>
+                      {renderRow(c)}
+                      {renderMobileRow(c)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : groupMode === 'company' ? (
+          <div>
+            {companyGroups.map(({ label, items }) => (
+              <div key={label}>
+                <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center gap-2 sticky top-0">
+                  <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="text-sm font-semibold text-gray-700">{label}</span>
+                  <span className="text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded-full">{items.length}件</span>
+                  {items.length > 1 && (
+                    <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                      同一会社 {items.length}名
+                    </span>
+                  )}
                 </div>
                 <div className="divide-y divide-gray-50">
                   {tableHeader}
