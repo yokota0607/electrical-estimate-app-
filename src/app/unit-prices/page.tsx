@@ -180,8 +180,8 @@ export default function UnitPricesPage() {
         if (pn) seen.add(pn)
         items.push({
           part_number: pn, name: nm, maker: String(row[mkC] || '').trim(),
-          unit: String(row[utC] || '').trim() || '個', quantity_per_pack: String(row[qC] || '').trim(),
-          price: Number(row[prC]) || 0, category: String(row[caC] || '').trim() || '電気工事材料',
+          unit: texasUnit(String(row[utC] || '')), quantity_per_pack: String(row[qC] || '').trim(),
+          price: Number(row[prC]) || 0, category: texasCategory(String(row[caC] || ''), nm),
           order_supplier: 'たけでん',
         })
       }
