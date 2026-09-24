@@ -27,9 +27,14 @@ export async function POST(request: NextRequest) {
 
     for (const item of items) {
       if (!item.name) continue
-      // 品番が一致する既存レコードがあればスキップ
+      const supplier = item.order_supplier || 'たけでん'
+      // 品番が一致する既存レコードがあればスキップ。ただし同じ発注先の中だけで判定し、
+      // 他の発注先（電綜・山内商事など）に同じ品番があっても別行として登録する。
       if (item.part_number) {
-        const existing = await sql`SELECT id FROM unit_prices WHERE part_number = ${item.part_number}`
+        const existing = await sql`
+          SELECT id FROM unit_prices
+          WHERE part_number = ${item.part_number} AND order_supplier = ${supplier}
+        `
         if (existing.length > 0) { skipped++; continue }
       }
       await sql`
@@ -44,7 +49,7 @@ export async function POST(request: NextRequest) {
           ${item.part_number || ''},
           ${item.maker || ''},
           ${item.quantity_per_pack || ''},
-          ${item.order_supplier || 'たけでん'},
+          ${supplier},
           '[]'
         )
       `

@@ -24,9 +24,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'CSVから読み取れる行がありませんでした' }, { status: 400 })
     }
 
+    // 照合相手は発注先「たけでん」（未設定＝空欄・NULL含む）の行だけに絞る。
+    // 電綜・山内商事など他の発注先の単価はテキサス取り込みで触らない。
     const existingRaw = await sql`
       SELECT id, name, part_number, maker, unit, price, category, supplier, order_supplier, notes
       FROM unit_prices
+      WHERE order_supplier = 'たけでん' OR order_supplier IS NULL OR order_supplier = ''
     `
     const existing = (existingRaw as Record<string, unknown>[]).map(r => ({
       ...r,
