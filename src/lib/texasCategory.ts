@@ -43,6 +43,8 @@ export function texasCategory(code: string, name: string): string {
     case 'N':
       return '通信・弱電設備'
     case 'I':
+      if (c === 'I01' || c === 'I02' || c === 'I50') return '工具・計測器'
+      return 'その他'
     case 'O':
       return 'その他'
   }
