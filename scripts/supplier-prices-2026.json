@@ -1,0 +1,652 @@
+[
+ {
+  "part_number": "IV14G",
+  "name": "IV 14sq ミドリ",
+  "maker": "フジクラD",
+  "unit": "m",
+  "price": 447,
+  "category": "電線・ケーブル",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥447（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "VE-22",
+  "name": "硬質ビニル電線管(J管) グレー 22",
+  "maker": "未来工業",
+  "unit": "本",
+  "price": 470,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥470（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "CE2",
+  "name": "CE 2 閉端接続子",
+  "maker": "ニチフ",
+  "unit": "個",
+  "price": 12,
+  "category": "電気工事材料",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥12（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "IP3015SG",
+  "name": "PB サビドメ平1.6t 300X300X150",
+  "maker": "八州",
+  "unit": "個",
+  "price": 2480,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥2,480（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "IP1515SG",
+  "name": "PB サビドメ平1.6t 150X150X150",
+  "maker": "八州",
+  "unit": "個",
+  "price": 1190,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07/08 仕入 ¥1,190（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "PVP-3020K",
+  "name": "プールボックス正方形 300X200",
+  "maker": "未来工業",
+  "unit": "個",
+  "price": 7600,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥7,600（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "PVP-2015K",
+  "name": "プールボックス正方形 200X150",
+  "maker": "未来工業",
+  "unit": "個",
+  "price": 2750,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07/08 仕入 ¥2,750（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "KVE-22",
+  "name": "VE片サドル 22",
+  "maker": "未来工業",
+  "unit": "個",
+  "price": 40,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥40（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "SW1-22",
+  "name": "露出スイッチボックス 22",
+  "maker": "未来工業",
+  "unit": "個",
+  "price": 310,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥310（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "MFS-54K",
+  "name": "ミラフレキSS(黒) 50m×2本",
+  "maker": "未来工業",
+  "unit": "巻",
+  "price": 19530,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥19,530（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "MFSK-54GK",
+  "name": "PF管コネクタ(Gタイプ)",
+  "maker": "未来工業",
+  "unit": "個",
+  "price": 551,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥551（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "6CVT22",
+  "name": "600V CV-T 22sq",
+  "maker": "HS&T",
+  "unit": "m",
+  "price": 1988,
+  "category": "電線・ケーブル",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-07 仕入 ¥1,988（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "IP2015SG",
+  "name": "PB サビドメ平1.6t 200X200X150",
+  "maker": "八州",
+  "unit": "個",
+  "price": 1600,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥1,600（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "VVF163",
+  "name": "VVF 1.6X3C",
+  "maker": "富士電線",
+  "unit": "m",
+  "price": 203,
+  "category": "電線・ケーブル",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥203（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "IP1510SG",
+  "name": "PB サビドメ平1.6t 150X150X100",
+  "maker": "八州",
+  "unit": "個",
+  "price": 920,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥920（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "WN39929020",
+  "name": "石膏ボード用C型はさみ金具(20コ入)",
+  "maker": "パナソニック",
+  "unit": "箱",
+  "price": 1400,
+  "category": "コンセント・スイッチ",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥1,400（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "WN3993K020",
+  "name": "フルカラー石膏ボード用はさみ金具(20コ入)",
+  "maker": "パナソニック",
+  "unit": "箱",
+  "price": 1400,
+  "category": "コンセント・スイッチ",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥1,400（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "DP5020WN",
+  "name": "プルボックス SD 被1.6t 500X500X200",
+  "maker": "八州",
+  "unit": "個",
+  "price": 17750,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥17,750（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "DP5030WN",
+  "name": "プルボックス SD 被1.6t 500X500X300",
+  "maker": "八州",
+  "unit": "個",
+  "price": 21350,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥21,350（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "VEP70GHW",
+  "name": "硬質ビニル電線管(ニチパイプ)(70)(グレー)",
+  "maker": "ニチドウ",
+  "unit": "本",
+  "price": 3870,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥3,870（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "2K70GHW",
+  "name": "2号コネクタ(70)(グレー)",
+  "maker": "ニチドウ",
+  "unit": "個",
+  "price": 910,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥910（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "TS70GHW",
+  "name": "TSカップリング(70)(グレー)",
+  "maker": "ニチドウ",
+  "unit": "個",
+  "price": 620,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-08 仕入 ¥620（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "OTL54B",
+  "name": "四角アウトレットBOX 大深(22x28) 黒",
+  "maker": "八州",
+  "unit": "個",
+  "price": 478,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-09 仕入 ¥478（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "5MCB",
+  "name": "5x5ブランクカバー 黒",
+  "maker": "八州",
+  "unit": "枚",
+  "price": 142,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-09 仕入 ¥142（千日前焼肉）・税抜"
+ },
+ {
+  "part_number": "ADR-342",
+  "name": "カッチングダクト 30x40hx2000",
+  "maker": "星和電機",
+  "unit": "本",
+  "price": 855,
+  "category": "配管・電線管",
+  "order_supplier": "電綜",
+  "notes": "電綜 請求書 2026-09 仕入 ¥855（草津電気）・税抜"
+ },
+ {
+  "part_number": "DP1",
+  "name": "ネグロス レースウェイ 直線 DP1",
+  "maker": "ネグロス電工",
+  "unit": "本",
+  "price": 2436,
+  "category": "配管・電線管",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥2,436・税抜"
+ },
+ {
+  "part_number": "DPY1-W3",
+  "name": "ネグロス 吊り金具 DPY1-W3",
+  "maker": "ネグロス電工",
+  "unit": "個",
+  "price": 238,
+  "category": "配管・電線管",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥238・税抜"
+ },
+ {
+  "part_number": "DG1",
+  "name": "ネグロス 継ぎ金具 DG1",
+  "maker": "ネグロス電工",
+  "unit": "個",
+  "price": 326,
+  "category": "配管・電線管",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥326・税抜"
+ },
+ {
+  "part_number": "L600-70",
+  "name": "タイガーベース L600-70",
+  "maker": "",
+  "unit": "本",
+  "price": 1450,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥1,450・税抜"
+ },
+ {
+  "part_number": "DV600-100",
+  "name": "ダクターベース DV600-100",
+  "maker": "",
+  "unit": "本",
+  "price": 2350,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥2,350・税抜"
+ },
+ {
+  "part_number": "TM600S",
+  "name": "ベースマット(ゴムマット) TM600S",
+  "maker": "",
+  "unit": "枚",
+  "price": 560,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥560・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ PSプレート 3/8",
+  "maker": "",
+  "unit": "個",
+  "price": 48,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥48・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ PS座金 3/8",
+  "maker": "",
+  "unit": "個",
+  "price": 46,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥46・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ZAMカバー 830×350×350",
+  "maker": "",
+  "unit": "台",
+  "price": 28000,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥28,000・税抜"
+ },
+ {
+  "part_number": "WGZ-2-JP",
+  "name": "ワゴ WGZ-2-JP (120個入)",
+  "maker": "ジャッピ",
+  "unit": "ケース",
+  "price": 1880,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥1,880・税抜"
+ },
+ {
+  "part_number": "WGZ-3-JP",
+  "name": "ワゴ WGZ-3-JP (100個入)",
+  "maker": "ジャッピ",
+  "unit": "ケース",
+  "price": 1880,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥1,880・税抜"
+ },
+ {
+  "part_number": "WGZ-4-JP",
+  "name": "ワゴ WGZ-4-JP (80個入)",
+  "maker": "ジャッピ",
+  "unit": "ケース",
+  "price": 1540,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥1,540・税抜"
+ },
+ {
+  "part_number": "WGZ-5-JP",
+  "name": "ワゴ WGZ-5-JP (60個入)",
+  "maker": "ジャッピ",
+  "unit": "ケース",
+  "price": 1540,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥1,540・税抜"
+ },
+ {
+  "part_number": "WGZ-6-JP",
+  "name": "ワゴ WGZ-6-JP (50個入)",
+  "maker": "ジャッピ",
+  "unit": "ケース",
+  "price": 1540,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥1,540・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "Vテープ 黒白緑×10",
+  "maker": "",
+  "unit": "個",
+  "price": 95,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥95・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ 寸切 M12×1000",
+  "maker": "",
+  "unit": "本",
+  "price": 260,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥260・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ ナット M12",
+  "maker": "",
+  "unit": "個",
+  "price": 9,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥9・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ ワッシャー 1/2",
+  "maker": "",
+  "unit": "枚",
+  "price": 9.6,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥9.6・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ スプリングワッシャー M12",
+  "maker": "",
+  "unit": "個",
+  "price": 5,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥5・税抜"
+ },
+ {
+  "part_number": "NF-12HM",
+  "name": "プラシール NF-12HM",
+  "maker": "",
+  "unit": "kg",
+  "price": 2100,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-08 仕入 ¥2,100・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "恒和 蓄力コネクター 2号",
+  "maker": "恒和",
+  "unit": "個",
+  "price": 960,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥960（電柱材料）・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "恒和 蓄力コネクター 3号",
+  "maker": "恒和",
+  "unit": "個",
+  "price": 1390,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥1,390（電柱材料）・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "恒和 蓄力コネクター 4号",
+  "maker": "恒和",
+  "unit": "個",
+  "price": 2560,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥2,560（電柱材料）・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "恒和 蓄力コネクター 5号",
+  "maker": "恒和",
+  "unit": "個",
+  "price": 3410,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-07 仕入 ¥3,410（電柱材料）・税抜"
+ },
+ {
+  "part_number": "RD100-10",
+  "name": "ターミナル RD100-10",
+  "maker": "",
+  "unit": "個",
+  "price": 737,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05 仕入 ¥737・税抜"
+ },
+ {
+  "part_number": "RD38-10",
+  "name": "ターミナル RD38-10",
+  "maker": "",
+  "unit": "個",
+  "price": 410,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05 仕入 ¥410・税抜"
+ },
+ {
+  "part_number": "RD38-12",
+  "name": "ターミナル RD38-12",
+  "maker": "",
+  "unit": "個",
+  "price": 410,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05 仕入 ¥410・税抜"
+ },
+ {
+  "part_number": "RD150-12",
+  "name": "ターミナル RD150-12",
+  "maker": "",
+  "unit": "個",
+  "price": 1113,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05 仕入 ¥1,113・税抜"
+ },
+ {
+  "part_number": "RD60-10",
+  "name": "ターミナル RD60-10",
+  "maker": "",
+  "unit": "個",
+  "price": 518,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05 仕入 ¥518・税抜"
+ },
+ {
+  "part_number": "RD60-12",
+  "name": "ターミナル RD60-12",
+  "maker": "",
+  "unit": "個",
+  "price": 518,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05 仕入 ¥518・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ ナット 3/8",
+  "maker": "",
+  "unit": "個",
+  "price": 3.5,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05/06 仕入 ¥3.5・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ ワッシャー 3/8",
+  "maker": "",
+  "unit": "枚",
+  "price": 3.6,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-05/06 仕入 ¥3.6・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ スプリングワッシャー M8",
+  "maker": "",
+  "unit": "個",
+  "price": 2.5,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥2.5・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ ワッシャー M8",
+  "maker": "",
+  "unit": "枚",
+  "price": 3,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥3・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ スプリングワッシャー 3/8",
+  "maker": "",
+  "unit": "個",
+  "price": 3.5,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥3.5・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ODK 配電ターミナル 80SQ",
+  "maker": "ODK",
+  "unit": "個",
+  "price": 1190,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥1,190・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ODK 配電ターミナル 38SQ",
+  "maker": "ODK",
+  "unit": "個",
+  "price": 690,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥690・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "ユニクロ 寸切 3/8×2000",
+  "maker": "",
+  "unit": "本",
+  "price": 200,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥200・税抜"
+ },
+ {
+  "part_number": "PPV-425",
+  "name": "Pレスアンカー PPV-425 ナベ頭",
+  "maker": "",
+  "unit": "ケース",
+  "price": 800,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥800・税抜"
+ },
+ {
+  "part_number": "",
+  "name": "鉄バインド 0.9φ 黒",
+  "maker": "",
+  "unit": "巻",
+  "price": 2160,
+  "category": "電気工事材料",
+  "order_supplier": "山内商事",
+  "notes": "山内商事 請求書 2026-06 仕入 ¥2,160・税抜"
+ }
+]
