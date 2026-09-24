@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       order_date, supplier, delivery_destination, ledger_id,
-      project_name, delivery_date, notes, items
+      project_name, delivery_date, notes, items, source_file_id,
+      order_category, actual_delivery_date, order_payment_status, payment_date
     } = body
 
     const today = order_date || new Date().toISOString().slice(0, 10)
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
       : 0
 
     const [order] = await sql`
-      INSERT INTO purchase_orders (order_number, order_date, supplier, delivery_destination, ledger_id, project_name, delivery_date, notes, total_amount)
+      INSERT INTO purchase_orders (order_number, order_date, supplier, delivery_destination, ledger_id, project_name, delivery_date, notes, total_amount, source_file_id, order_category, actual_delivery_date, order_payment_status, payment_date)
       VALUES (
         ${order_number},
         ${today},
@@ -85,7 +86,12 @@ export async function POST(request: NextRequest) {
         ${project_name || ''},
         ${delivery_date || ''},
         ${notes || ''},
-        ${total_amount}
+        ${total_amount},
+        ${source_file_id || null},
+        ${order_category || '電気工事材料'},
+        ${actual_delivery_date || ''},
+        ${order_payment_status || '未払い'},
+        ${payment_date || ''}
       )
       RETURNING *
     `

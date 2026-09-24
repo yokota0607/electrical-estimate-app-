@@ -168,6 +168,54 @@ CREATE TABLE IF NOT EXISTS construction_processes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id SERIAL PRIMARY KEY,
+  order_number TEXT DEFAULT '',
+  order_date TEXT DEFAULT '',
+  supplier TEXT DEFAULT 'たけでん',
+  delivery_destination TEXT DEFAULT '',
+  ledger_id INTEGER REFERENCES construction_ledger(id) ON DELETE SET NULL,
+  project_name TEXT DEFAULT '',
+  delivery_date TEXT DEFAULT '',
+  is_received INTEGER DEFAULT 0,
+  received_at TEXT DEFAULT '',
+  notes TEXT DEFAULT '',
+  total_amount REAL DEFAULT 0,
+  source_file_id INTEGER DEFAULT NULL,
+  order_category TEXT DEFAULT '電気工事材料',
+  actual_delivery_date TEXT DEFAULT '',
+  order_payment_status TEXT DEFAULT '未払い',
+  payment_date TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS purchase_order_items (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  unit_price_id INTEGER DEFAULT NULL,
+  part_number TEXT DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  maker TEXT DEFAULT '',
+  unit TEXT DEFAULT '個',
+  quantity REAL DEFAULT 1,
+  unit_price REAL DEFAULT 0,
+  amount REAL DEFAULT 0,
+  sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS purchase_order_files (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  stored_name TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  file_size INTEGER DEFAULT 0,
+  mime_type TEXT DEFAULT '',
+  uploaded_by TEXT DEFAULT '',
+  label TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- デフォルト業種グループ
 INSERT INTO industry_groups (name, sort_order) VALUES
   ('電気工事', 0), ('水道', 1), ('内装', 2), ('建築', 3), ('リフォーム', 4),

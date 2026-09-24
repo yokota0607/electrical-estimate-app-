@@ -26,6 +26,34 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+    const [existing] = await sql`SELECT * FROM purchase_orders WHERE id = ${id}`
+    if (!existing) return NextResponse.json({ error: '発注が見つかりません' }, { status: 404 })
+    const ex = existing as Record<string, unknown>
+    const [order] = await sql`
+      UPDATE purchase_orders SET
+        order_category = ${body.order_category ?? ex.order_category ?? '電気工事材料'},
+        actual_delivery_date = ${body.actual_delivery_date ?? ex.actual_delivery_date ?? ''},
+        order_payment_status = ${body.order_payment_status ?? ex.order_payment_status ?? '未払い'},
+        payment_date = ${body.payment_date ?? ex.payment_date ?? ''},
+        notes = ${body.notes ?? ex.notes ?? ''},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `
+    return NextResponse.json(order)
+  } catch (error) {
+    console.error(error)
+    return NextResponse.json({ error: '更新に失敗しました', detail: String(error) }, { status: 500 })
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,6 +75,10 @@ export async function PUT(
     const notes = body.notes ?? ex.notes ?? ''
     const is_received = 'is_received' in body ? (body.is_received ? 1 : 0) : ex.is_received
     const received_at = body.received_at ?? ex.received_at ?? ''
+    const order_category = body.order_category ?? ex.order_category ?? '電気工事材料'
+    const actual_delivery_date = body.actual_delivery_date ?? ex.actual_delivery_date ?? ''
+    const order_payment_status = body.order_payment_status ?? ex.order_payment_status ?? '未払い'
+    const payment_date = body.payment_date ?? ex.payment_date ?? ''
     const items = body.items
 
     const total_amount = Array.isArray(items)
@@ -65,6 +97,10 @@ export async function PUT(
           is_received = ${is_received},
           received_at = ${received_at},
           total_amount = ${total_amount},
+          order_category = ${order_category},
+          actual_delivery_date = ${actual_delivery_date},
+          order_payment_status = ${order_payment_status},
+          payment_date = ${payment_date},
           updated_at = NOW()
       WHERE id = ${id}
       RETURNING *
