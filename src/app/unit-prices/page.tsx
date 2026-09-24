@@ -50,6 +50,7 @@ export default function UnitPricesPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [makerFilter, setMakerFilter] = useState('all')
   const [editingId, setEditingId] = useState<number | 'new' | null>(null)
   const [form, setForm] = useState(BLANK)
   const [nicknameInput, setNicknameInput] = useState('')
@@ -76,9 +77,16 @@ export default function UnitPricesPage() {
   useEffect(() => { load() }, [search])
 
   // カテゴリフィルター（クライアント側）
-  const filtered = categoryFilter === 'all'
-    ? prices
-    : prices.filter(p => p.category === categoryFilter)
+  const NO_MAKER = '（未入力）'
+  const makerOf = (p: UnitPrice) => (p.maker || '').trim() || NO_MAKER
+  const makerOptions = (() => {
+    const cnt = new Map<string, number>()
+    for (const p of prices) cnt.set(makerOf(p), (cnt.get(makerOf(p)) || 0) + 1)
+    return Array.from(cnt.entries()).sort((a, b) => b[1] - a[1])
+  })()
+  const filtered = prices.filter(p =>
+    (categoryFilter === 'all' || p.category === categoryFilter) &&
+    (makerFilter === 'all' || makerOf(p) === makerFilter))
 
   // グルーピング：既知カテゴリ→不明カテゴリの順
   const grouped: Record<string, UnitPrice[]> = {}
@@ -401,6 +409,10 @@ export default function UnitPricesPage() {
         <select className="input sm:w-48" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
           <option value="all">すべてのカテゴリ</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
+        <select className="input sm:w-56" value={makerFilter} onChange={e => setMakerFilter(e.target.value)}>
+          <option value="all">すべてのメーカー</option>
+          {makerOptions.map(([mk, n]) => <option key={mk} value={mk}>{mk}（{n}）</option>)}
         </select>
       </div>
 
