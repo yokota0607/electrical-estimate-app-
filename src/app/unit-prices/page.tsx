@@ -195,7 +195,18 @@ export default function UnitPricesPage() {
       const XLSX = await import('xlsx')
       // CSVを文字列として読み込む（Shift-JIS/UTF-8どちらも xlsx 側で吸収）
       const buf = await file.arrayBuffer()
-      const wb = XLSX.read(buf, { type: 'array', codepage: 65001 })
+      // Excel(.xlsx/.xls)はそのまま、CSVは文字コードを判定してから読む。
+      // テキサスのCSVはShift-JISなので、UTF-8で読めなければShift-JISで読み直す。
+      const isCsv = /\.(csv|txt)$/i.test(file.name)
+      let wb
+      if (isCsv) {
+        let text: string
+        try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf) }
+        catch { text = new TextDecoder('shift_jis').decode(buf) }
+        wb = XLSX.read(text.replace(/^\uFEFF/, ''), { type: 'string' })
+      } else {
+        wb = XLSX.read(buf, { type: 'array' })
+      }
       const ws = wb.Sheets[wb.SheetNames[0]]
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][]
       // テキサスCSVは1〜2行目が「期間：」等のヘッダー情報で、列見出し行に品番・品名・単価が並ぶ。
@@ -605,10 +616,10 @@ function TexasImportModal({ result, onClose, onDone }: {
   onClose: () => void
   onDone: () => void
 }) {
-  // 差額がある行を初期選択（信頼度が低いものは既定でオフ）
+  // 差額がある行を初期選択（あいまい一致は誤判定が多いので既定でオフ）
   const [checked, setChecked] = useState<Record<number, boolean>>(() =>
     Object.fromEntries(result.matched.map(m => [
-      m.existing_id, m.diff !== 0 && !m.low_confidence,
+      m.existing_id, m.diff !== 0 && m.match_type !== 'fuzzy_name',
     ]))
   )
   // 未登録品目：新規追加するものを選択（既定オフ）
@@ -658,6 +669,45 @@ function TexasImportModal({ result, onClose, onDone }: {
 
   const updatableCount = result.matched.filter(m => m.diff !== 0).length
 
+  // 絞り込み（メーカー・キーワード）。一括チェックは「表示中の行」だけに効く。
+  const [makerFilter, setMakerFilter] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const makerCounts = (() => {
+    const cnt = new Map<string, number>()
+    for (const m of result.matched) { const k = m.csv_maker || '（メーカー無し）'; cnt.set(k, (cnt.get(k) || 0) + 1) }
+    for (const u of result.unmatched) { const k = u.csv_maker || '（メーカー無し）'; cnt.set(k, (cnt.get(k) || 0) + 1) }
+    return Array.from(cnt.entries()).sort((a, b) => b[1] - a[1])
+  })()
+  const norm = (v: string) => v.normalize('NFKC').toLowerCase()
+  const passes = (maker: string, texts: string[]) => {
+    if (makerFilter && (maker || '（メーカー無し）') !== makerFilter) return false
+    if (keyword.trim()) {
+      const k = norm(keyword.trim())
+      if (!texts.some(t => norm(t || '').includes(k))) return false
+    }
+    return true
+  }
+  const visibleMatched = result.matched.filter(m =>
+    passes(m.csv_maker, [m.existing_name, m.existing_part_number, m.csv_name, m.csv_part_number]))
+  const visibleUnmatched = result.unmatched
+    .map((u, i) => ({ u, i }))
+    .filter(({ u }) => passes(u.csv_maker, [u.csv_name, u.csv_part_number]))
+
+  // 一括チェック操作（表示中の行だけ変更し、非表示の行の状態は残す）
+  const setMatchedWhere = (pred: (m: TexasMatch) => boolean) =>
+    setChecked(c => {
+      const next = { ...c }
+      for (const m of visibleMatched) next[m.existing_id] = m.diff !== 0 && pred(m)
+      return next
+    })
+  const allNewChecked = visibleUnmatched.length > 0 && visibleUnmatched.every(({ i }) => newChecked[i])
+  const setAllNew = (on: boolean) =>
+    setNewChecked(c => {
+      const next = { ...c }
+      for (const { i } of visibleUnmatched) next[i] = on
+      return next
+    })
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[92vh] flex flex-col">
@@ -669,12 +719,35 @@ function TexasImportModal({ result, onClose, onDone }: {
           <button onClick={onClose}><X className="h-5 w-5 text-gray-400" /></button>
         </div>
 
+        <div className="px-4 sm:px-5 py-3 border-b bg-gray-50 flex flex-col sm:flex-row gap-2">
+          <select value={makerFilter} onChange={e => setMakerFilter(e.target.value)} className="input text-sm sm:w-64">
+            <option value="">メーカー：すべて</option>
+            {makerCounts.map(([mk, n]) => <option key={mk} value={mk}>{mk}（{n}）</option>)}
+          </select>
+          <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="品名・品番で絞り込み（例：ＶＶＦ、コンセント）"
+            className="input text-sm flex-1" />
+          {(makerFilter || keyword) && (
+            <button type="button" onClick={() => { setMakerFilter(''); setKeyword('') }}
+              className="px-2.5 py-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100">絞り込み解除</button>
+          )}
+        </div>
+
         <div className="overflow-y-auto p-4 sm:p-5 space-y-6 flex-1">
           {/* マッチした品目 */}
           <section>
             <h4 className="font-medium text-sm text-gray-700 mb-2">
-              照合できた品目（{result.matched.length}件 / うち単価変更 {updatableCount}件）
+              照合できた品目（{result.matched.length}件 / うち単価変更 {updatableCount}件{visibleMatched.length !== result.matched.length && ` / 表示中 ${visibleMatched.length}件`}）
             </h4>
+            {updatableCount > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                <button type="button" onClick={() => setMatchedWhere(() => true)}
+                  className="px-2.5 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">表示中をすべてチェック</button>
+                <button type="button" onClick={() => setMatchedWhere(m => m.match_type !== 'fuzzy_name')}
+                  className="px-2.5 py-1 text-xs rounded border border-blue-300 text-blue-700 hover:bg-blue-50">品番・品名一致だけチェック</button>
+                <button type="button" onClick={() => setMatchedWhere(() => false)}
+                  className="px-2.5 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">表示中を外す</button>
+              </div>
+            )}
             {result.matched.length === 0 ? (
               <p className="text-sm text-gray-400">照合できた品目はありません。</p>
             ) : (
@@ -691,7 +764,7 @@ function TexasImportModal({ result, onClose, onDone }: {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {result.matched.map(m => {
+                    {visibleMatched.map(m => {
                       const unchanged = m.diff === 0
                       return (
                         <tr key={m.existing_id} className={m.low_confidence ? 'bg-yellow-50' : ''}>
@@ -739,13 +812,22 @@ function TexasImportModal({ result, onClose, onDone }: {
           {result.unmatched.length > 0 && (
             <section>
               <h4 className="font-medium text-sm text-gray-700 mb-2">
-                未登録品目（新規品番の可能性 {result.unmatched.length}件）
+                未登録品目（新規品番の可能性 {result.unmatched.length}件{visibleUnmatched.length !== result.unmatched.length && ` / 表示中 ${visibleUnmatched.length}件`}）
               </h4>
+              <div className="flex flex-wrap gap-2 mb-2">
+                <button type="button" onClick={() => setAllNew(true)}
+                  className="px-2.5 py-1 text-xs rounded border border-blue-300 text-blue-700 hover:bg-blue-50">表示中をすべてチェック</button>
+                <button type="button" onClick={() => setAllNew(false)}
+                  className="px-2.5 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50">表示中を外す</button>
+              </div>
               <div className="border rounded-lg overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-2 py-2 w-8"></th>
+                      <th className="px-2 py-2 w-8 text-center">
+                        <input type="checkbox" checked={allNewChecked} onChange={e => setAllNew(e.target.checked)}
+                          title="すべて選択／解除" className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                      </th>
                       <th className="text-left px-2 py-2 text-gray-500 w-32">品番</th>
                       <th className="text-left px-2 py-2 text-gray-500">品名</th>
                       <th className="text-left px-2 py-2 text-gray-500 w-28">メーカー</th>
@@ -753,7 +835,7 @@ function TexasImportModal({ result, onClose, onDone }: {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {result.unmatched.map((u, i) => (
+                    {visibleUnmatched.map(({ u, i }) => (
                       <tr key={i}>
                         <td className="px-2 py-2 text-center">
                           <input type="checkbox" checked={!!newChecked[i]}
