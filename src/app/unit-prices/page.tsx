@@ -51,7 +51,7 @@ export default function UnitPricesPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
-  const [makerFilter, setMakerFilter] = useState('all')
+  const [makerFilter, setMakerFilter] = useState('')
   const [editingId, setEditingId] = useState<number | 'new' | null>(null)
   const [form, setForm] = useState(BLANK)
   const [nicknameInput, setNicknameInput] = useState('')
@@ -85,9 +85,11 @@ export default function UnitPricesPage() {
     for (const p of prices) cnt.set(makerOf(p), (cnt.get(makerOf(p)) || 0) + 1)
     return Array.from(cnt.entries()).sort((a, b) => b[1] - a[1])
   })()
+  const normalizeText = (s: string) => s.normalize('NFKC').toLowerCase()
+  const makerQuery = normalizeText(makerFilter.trim())
   const filtered = prices.filter(p =>
     (categoryFilter === 'all' || p.category === categoryFilter) &&
-    (makerFilter === 'all' || makerOf(p) === makerFilter))
+    (!makerQuery || normalizeText(makerOf(p)).includes(makerQuery)))
 
   // グルーピング：既知カテゴリ→不明カテゴリの順
   const grouped: Record<string, UnitPrice[]> = {}
@@ -417,10 +419,19 @@ export default function UnitPricesPage() {
           <option value="all">すべてのカテゴリ</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
-        <select className="input sm:w-56" value={makerFilter} onChange={e => setMakerFilter(e.target.value)}>
-          <option value="all">すべてのメーカー</option>
-          {makerOptions.map(([mk, n]) => <option key={mk} value={mk}>{mk}（{n}）</option>)}
-        </select>
+        <div className="relative sm:w-56">
+          <input className="input pr-8" list="maker-options" placeholder="メーカーで検索（例：パナ）"
+            value={makerFilter} onChange={e => setMakerFilter(e.target.value)} />
+          <datalist id="maker-options">
+            {makerOptions.map(([mk, n]) => <option key={mk} value={mk}>{mk}（{n}）</option>)}
+          </datalist>
+          {makerFilter && (
+            <button type="button" onClick={() => setMakerFilter('')} aria-label="メーカー絞り込みを解除"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Cart */}
