@@ -205,6 +205,75 @@ export async function analyzeBusinessCardScan(
   return result.cards ?? []
 }
 
+const ORDER_EXTRACTION_PROMPT = `あなたは発注書・見積書の読み取り専門家です。添付されたPDFを分析し、発注登録に必要な品目情報を抽出してください。
+
+必ず以下のJSON形式のみで回答してください（他のテキストは不要）：
+{
+  "supplier": "発注先・仕入先会社名（見つからない場合は空文字）",
+  "items": [
+    {
+      "name": "品目名・材料名（具体的に）",
+      "quantity": 数量（数値）,
+      "unit": "単位（個・本・m・式・ヶ所など）",
+      "unit_price": 単価（税抜き数値、見つからない場合は0）,
+      "amount": 金額（税抜き数値、単価×数量）
+    }
+  ],
+  "subtotal": 小計金額（税抜き数値、見つからない場合は0）,
+  "tax": 消費税額（数値、見つからない場合は0）,
+  "total": 合計金額（税込み数値、見つからない場合は0）,
+  "notes": "備考・特記事項（見つからない場合は空文字）"
+}
+
+注意：
+- 品目が複数行ある場合はすべて漏れなく抽出してください
+- 金額はカンマ・円マーク不要の数値のみで返してください
+- 合計が税込みか税抜きか確認し、税込みの合計をtotalに入れてください`
+
+export interface ExtractedOrderItem {
+  name: string
+  quantity: number
+  unit: string
+  unit_price: number
+  amount: number
+}
+
+export interface ExtractedOrder {
+  supplier: string
+  items: ExtractedOrderItem[]
+  subtotal: number
+  tax: number
+  total: number
+  notes: string
+}
+
+export async function analyzeOrderDocument(pdfBase64: string): Promise<ExtractedOrder> {
+  const response = await getClient().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4096,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
+          } as { type: 'document'; source: { type: 'base64'; media_type: 'application/pdf'; data: string } },
+          { type: 'text', text: ORDER_EXTRACTION_PROMPT },
+        ],
+      },
+    ],
+  })
+
+  const content = response.content[0]
+  if (content.type !== 'text') throw new Error('Unexpected response type from Claude')
+
+  const jsonMatch = content.text.trim().match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('JSONレスポンスが見つかりませんでした')
+
+  return JSON.parse(jsonMatch[0]) as ExtractedOrder
+}
+
 export async function analyzePDF(pdfBase64: string): Promise<ExtractionResult> {
   const response = await getClient().messages.create({
     model: 'claude-sonnet-4-6',
