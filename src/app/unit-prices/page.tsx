@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { Plus, Search, Trash2, Pencil, Check, X, Download, Upload, Tag, ShoppingCart, ChevronDown, ChevronUp, FileSpreadsheet, AlertTriangle } from 'lucide-react'
+import { texasCategory, texasUnit } from '@/lib/texasCategory'
 
 interface UnitPrice {
   id: number
@@ -26,7 +27,7 @@ interface CartItem {
 
 const CATEGORIES = [
   '電線・ケーブル', '配管・電線管', '照明器具', 'コンセント・スイッチ',
-  '分電盤・ブレーカー', '動力設備', '通信・弱電設備', '接地工事', '電気工事材料', 'その他'
+  '分電盤・ブレーカー', '動力設備', '高圧受電設備', '空調・換気設備', '通信・弱電設備', '接地工事', '電気工事材料', 'その他'
 ]
 const UNITS = ['m', '本', '個', '台', '組', '式', 'ヶ所', 'セット', 'kg', '枚', 'ｍ']
 
@@ -237,12 +238,15 @@ export default function UnitPricesPage() {
       const mkC = findCol(['メーカー名', 'メーカー'], ['メーカー'])
       // 「単価」（J列）を厳密に取得。「定価」(I列)・「金額」(K列)と取り違えないよう完全一致のみ。
       const prC = findCol(['単価'])
+      const kbC = findCol(['商品区分'])
+      const utC = findCol(['単位'])
+      const qpC = findCol(['入数'])
       if (nmC === -1 && pnC === -1) { alert('品番・品名の列が特定できませんでした'); return }
       if (prC === -1) { alert('「単価」列が見つかりませんでした（「定価」ではなく「単価」列が必要です）'); return }
 
       // 発注（売上）データは同じ品番が複数行に登場するため、品番＋メーカー単位で
       // 集約し、ファイル内で最後（＝通常は最新日付）に出た単価を採用する。
-      type Row = { part_number: string; name: string; price: number; maker: string }
+      type Row = { part_number: string; name: string; price: number; maker: string; category: string; unit: string; quantity_per_pack: string }
       const dedup = new Map<string, Row>()
       for (let i = headerIdx + 1; i < data.length; i++) {
         const row = (data[i] as unknown[]) || []
@@ -252,7 +256,10 @@ export default function UnitPricesPage() {
         const price = Number(String(row[prC] ?? '').replace(/[,¥￥\s]/g, '')) || 0
         if (!name && !part_number) continue
         const key = (part_number || name) + '' + maker
-        dedup.set(key, { part_number, name, price, maker }) // 後勝ち（最新単価を優先）
+        const kubun = kbC >= 0 ? String(row[kbC] ?? '').trim() : ''
+        const unit = texasUnit(utC >= 0 ? String(row[utC] ?? '') : '')
+        const quantity_per_pack = qpC >= 0 ? String(row[qpC] ?? '').normalize('NFKC').trim() : ''
+        dedup.set(key, { part_number, name, price, maker, category: texasCategory(kubun, name), unit, quantity_per_pack }) // 後勝ち（最新単価を優先）
       }
       const rows = Array.from(dedup.values())
       if (rows.length === 0) { alert('データ行が見つかりませんでした'); return }
@@ -610,6 +617,9 @@ interface TexasUnmatched {
   csv_name: string
   csv_maker: string
   new_price: number
+  category?: string
+  unit?: string
+  quantity_per_pack?: string
 }
 interface TexasMatchResult {
   fileName: string
@@ -665,7 +675,8 @@ function TexasImportModal({ result, onClose, onDone }: {
           body: JSON.stringify({
             items: selectedNew.map(u => ({
               part_number: u.csv_part_number, name: u.csv_name, price: u.new_price,
-              maker: u.csv_maker || '', unit: '個', quantity_per_pack: '', category: '電気工事材料', order_supplier: 'たけでん',
+              maker: u.csv_maker || '', unit: u.unit || '個', quantity_per_pack: u.quantity_per_pack || '',
+              category: u.category || '電気工事材料', order_supplier: 'たけでん',
             })),
           }),
         })
@@ -843,6 +854,7 @@ function TexasImportModal({ result, onClose, onDone }: {
                       <th className="text-left px-2 py-2 text-gray-500 w-32">品番</th>
                       <th className="text-left px-2 py-2 text-gray-500">品名</th>
                       <th className="text-left px-2 py-2 text-gray-500 w-28">メーカー</th>
+                      <th className="text-left px-2 py-2 text-gray-500 w-28">カテゴリ</th>
                       <th className="text-right px-2 py-2 text-gray-500 w-24">単価</th>
                     </tr>
                   </thead>
@@ -857,13 +869,14 @@ function TexasImportModal({ result, onClose, onDone }: {
                         <td className="px-2 py-2 font-mono text-[11px] text-gray-500">{u.csv_part_number || '—'}</td>
                         <td className="px-2 py-2 text-gray-900">{u.csv_name}</td>
                         <td className="px-2 py-2 text-gray-500">{u.csv_maker || '—'}</td>
+                        <td className="px-2 py-2 text-gray-500">{u.category || '電気工事材料'}</td>
                         <td className="px-2 py-2 text-right">{formatCurrency(u.new_price)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">チェックした品目は「たけでん／電気工事材料」の初期値で新規登録されます。</p>
+              <p className="text-[11px] text-gray-400 mt-1.5">チェックした品目は、発注先「たけでん」・表示のカテゴリ（テキサスの商品区分から自動判定）で新規登録されます。</p>
             </section>
           )}
         </div>

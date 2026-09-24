@@ -11,6 +11,9 @@ interface CsvRow {
   name?: string
   price?: number
   maker?: string
+  category?: string
+  unit?: string
+  quantity_per_pack?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -70,6 +73,9 @@ export async function POST(request: NextRequest) {
           csv_name: name,
           csv_maker: maker,
           new_price: newPrice,
+          category: row.category || '電気工事材料',
+          unit: row.unit || '個',
+          quantity_per_pack: row.quantity_per_pack || '',
         })
       }
     }
