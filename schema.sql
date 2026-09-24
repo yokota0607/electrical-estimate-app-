@@ -134,6 +134,7 @@ CREATE TABLE IF NOT EXISTS construction_files (
   uploaded_by TEXT DEFAULT '',
   category TEXT NOT NULL DEFAULT 'その他',
   label TEXT NOT NULL DEFAULT '',
+  is_contract_basis BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

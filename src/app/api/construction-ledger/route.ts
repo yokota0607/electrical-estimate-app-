@@ -7,7 +7,8 @@ export async function GET() {
     const rows = await sql`
       SELECT cl.*,
         e.title as estimate_title,
-        COALESCE((SELECT SUM(amount) FROM payment_history WHERE ledger_id = cl.id), 0) as paid_amount
+        COALESCE((SELECT SUM(amount) FROM payment_history WHERE ledger_id = cl.id), 0) as paid_amount,
+        EXISTS(SELECT 1 FROM construction_files WHERE ledger_id = cl.id) as has_files
       FROM construction_ledger cl
       LEFT JOIN estimates e ON e.id = cl.estimate_id
       ORDER BY cl.created_at DESC
